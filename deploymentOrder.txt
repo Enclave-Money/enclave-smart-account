@@ -1,0 +1,16 @@
+Prod New Network Deployment
+
+1. Deploy EnclaveRegistry (pass master key address as constructor arg) (with registry & factory deployment key)
+2. Deploy P256SmartAccountFactory (with registry & factory deployment key)
+
+(All deployments mentioned below are done with masterkey)
+3. If network supports EIP7212 go to 3a else go to 3b
+3a. Deploy P256V (pass 0x100 in constructor)
+3b. Deploy P256Verifier and then deploy P256V (pass address of P256Verifier in constructor)
+4. Deploy EnclaveVerifyingPaymaster
+5. Call deposit function with eth value
+6. Deploy FeeLogic
+7. Deploy EnclaveVerifyingTokenPaymaster (pass ERC20 and FeeLogic addresses as args in constructor)
+8. Call deposit function with eth value
+9. Update values of EnclaveRegistry (set entryPoint and p256Verifier)
+
