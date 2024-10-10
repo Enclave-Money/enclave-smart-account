@@ -78,3 +78,13 @@ Powering one-click biometric authentication for account creation and transaction
 | USDCPaymaster | 0x224e0779e0Ef924f0c0954fe2C886CF58E1a293e |
 | USDT | 0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7 |
 | USDTPaymaster | 0x393D1A9815ae893D09c8059D9C19705706CbBc93 |
+
+### Kakarot Sepolia
+
+| Contract | Address |
+|----------|---------|
+| Entrypoint | 0x19570561C424B0D2D8F9690B55F966560aB5C391 |
+| EnclaveRegistry | 0xA8E8f8cBD889Fc74882AeDFDcf8323fD7423DB47 |
+| P256SmartAccountFactory | 0x502674c8eF6A87A9C485df592033796A5ad71607 |
+| Paymaster | 0xBf682515A1E8Bb7d157E9d9Bb551834Ea96DF38f |
+| P256Verifier | 0x232fCFD3DB08926B387dCF31d00AD23da705402a |
