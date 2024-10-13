@@ -75,6 +75,8 @@ const config: HardhatUserConfig = {
     arbSepolia: getNetwork1("https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
     amoy: getNetwork1("https://polygon-amoy.infura.io/v3/" + process.env.INFURA_API_KEY),
     kakarotSepolia: getNetwork1("https://sepolia-rpc.kakarot.org"),
+    kakarotSepoliaNew: getNetwork1("https://rpc-kakarot-sepolia.karnot.xyz"),
+    // kakarotSepoliaNew: getNetworkProd("https://rpc-kakarot-sepolia.karnot.xyz"),
 
 
     opmain: getNetwork1("https://optimism-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
@@ -92,6 +94,8 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       arbSepolia: "MD9NYEJGPWUSBESQP9QQGFTB4G4EKKU69U",
+      opmain: process.env.OP_SCAN_API_KEY as string,
+      arbmain: process.env.ARB_SCAN_API_KEY as string,
     },
     customChains: [
       {
@@ -108,6 +112,22 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.arbiscan.io/api",
           browserURL: "https://sepolia.arbiscan.io/",
+        },
+      },
+      {
+        network: "opmain",
+        chainId: 10,
+        urls: {
+          apiURL: "https://api-optimistic.etherscan.io/api",
+          browserURL: "https://optimistic.etherscan.io/",
+        },
+      },
+      {
+        network: "arbmain",
+        chainId: 42161,
+        urls: {
+          apiURL: "https://api.arbiscan.io/api",
+          browserURL: "https://arbiscan.io/",
         },
       },
     ],

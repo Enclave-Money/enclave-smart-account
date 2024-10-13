@@ -12,8 +12,8 @@ async function main() {
 
     const m = {
         // entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
-        entryPoint: "0x19570561C424B0D2D8F9690B55F966560aB5C391",
-        p256Verifier: "0x232fCFD3DB08926B387dCF31d00AD23da705402a",
+        entryPoint: "0xb885bf3Fe55c3070581203f0c600E03368597501",
+        p256Verifier: "0x10D2b2c1b32b0E47299BFbF6eC078F0E1CE1DbCe",
     }
 
     //@ts-ignore
@@ -29,8 +29,8 @@ async function main() {
     // console.log(res2);
     
     //@ts-ignore
-    // const verifyValue2 = await enclaveRegistry.getRegistryAddress("p256Verifier");
-    // console.log("Res2: ", verifyValue2);
+    const verifyValue2 = await enclaveRegistry.getRegistryAddress("p256Verifier");
+    console.log("Res2: ", verifyValue2);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
