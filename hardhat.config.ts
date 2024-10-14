@@ -12,6 +12,13 @@ function getNetwork1(url: string) {
   };
 }
 
+function getNetworkTestBalance(url: string) {
+  return {
+    url,
+    accounts: [process.env.PRIVATE_KEY_TEST_BALANCE as string]
+  };
+}
+
 // Only use for prod deployments of Registry and Account Factory, other contracts need to be done with PRIVATE_KEY_2
 function getNetworkProd(url: string) {
   return {
@@ -67,12 +74,19 @@ const config: HardhatUserConfig = {
       url: "https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
       accounts: [process.env.PRIVATE_KEY as string], // replace with your private key
     },
-    sepolia: {
-      url: "https://sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
-      accounts: [process.env.PRIVATE_KEY as string], // replace with your private key
-    },
-    opSepolia: getNetwork1("https://optimism-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
-    arbSepolia: getNetwork1("https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
+    // sepolia: {
+    //   url: "https://sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
+    //   accounts: [process.env.PRIVATE_KEY as string], // replace with your private key
+    // },
+    // opSepolia: getNetwork1("https://optimism-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
+    // arbSepolia: getNetwork1("https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
+
+    // Test Balance Network Configs
+    sepolia: getNetworkTestBalance("https://sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
+    opSepolia: getNetworkTestBalance("https://optimism-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
+    arbSepolia: getNetworkTestBalance("https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
+    //////////////////////////////////////////////////////////////
+    
     amoy: getNetwork1("https://polygon-amoy.infura.io/v3/" + process.env.INFURA_API_KEY),
     kakarotSepolia: getNetwork1("https://sepolia-rpc.kakarot.org"),
     kakarotSepoliaNew: getNetwork1("https://rpc-kakarot-sepolia.karnot.xyz"),
