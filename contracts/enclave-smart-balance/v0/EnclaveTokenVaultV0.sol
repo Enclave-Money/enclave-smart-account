@@ -55,8 +55,9 @@ contract EnclaveTokenVaultV0 is ReentrancyGuard, IEnclaveTokenVaultV0 {
         console.log("Claiming amount: %s", _amount);
         require(_amount > 0, "Amount must be greater than 0");
         console.log("Claim amount: %s", _amount);
-
-        address _owner = abi.decode(_proof[0:20], (address));
+        
+        address _owner;
+        (_owner) = abi.decode(_proof, (address));
         console.log("Claim owner: %s", _owner);
 
         require(deposits[_tokenAddress][_owner] >= _amount, "Insufficient balance");
