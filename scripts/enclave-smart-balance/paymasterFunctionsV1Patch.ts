@@ -15,14 +15,14 @@ async function main() {
     signature: "0x"
   };
 
-  const paymasterContractFactory = await ethers.getContractFactory("EnclaveSolverPaymasterV1");
+  const paymasterContractFactory = await ethers.getContractFactory("EnclaveSolverPaymasterV1Patch");
   const paymasterContract = await paymasterContractFactory.deploy("0xF522AA3eC4dA6237a9570021AB6187Ca111aa8b3", "0x399e8917Cd7Ce367b06bFfd0863E465B0Fd950dB");
   // const paymasterContract = paymasterContractFactory.attach("0xada592b297ab5a01B0D0563eeBb692dE461Ad92a");
   
   console.log("Paymaster contract deployed at:", paymasterContract.target);
 
-  // const res = await paymasterContract.deposit({value: ethers.parseEther("0.01")});
-  // console.log("Deposit result:", res);
+  const res = await paymasterContract.deposit({value: ethers.parseEther("0.01")});
+  console.log("Deposit result:", res);
 
   const tokenAddress = "0xf09156042741F67F8099D17eB22638F01F97974b";
   const amount = 15000;
@@ -31,7 +31,7 @@ async function main() {
   const VALID_UNTIL = Math.floor((Date.now() + 3600000) / 1000);
   const VALID_AFTER = Math.floor(Date.now() / 1000);
 
-  const paymasterAndData = "0xada592b297ab5a01b0d0563eebb692de461ad92a0000000000000000000000000000000000000000000000000000670f6ec900000000000000000000000000000000000000000000000000000000670f60b9298a78072553e908dc87561ef39abcd63be902e82b905d86da8353f90418ce7532b222208446d793c026a970d85bd2ddf7bff2d529246aa7266ab4129c3a50121b5fd84259d66cd46123540766be93dfe6d43130d700000000000000000000000000000000000000000000000000000000000fb770"
+  // const paymasterAndData = "0xada592b297ab5a01b0d0563eebb692de461ad92a0000000000000000000000000000000000000000000000000000670f6ec900000000000000000000000000000000000000000000000000000000670f60b9298a78072553e908dc87561ef39abcd63be902e82b905d86da8353f90418ce7532b222208446d793c026a970d85bd2ddf7bff2d529246aa7266ab4129c3a50121b5fd84259d66cd46123540766be93dfe6d43130d700000000000000000000000000000000000000000000000000000000000fb770"
 
   try {
     // @ts-ignore
