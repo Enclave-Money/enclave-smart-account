@@ -7,6 +7,7 @@ pragma solidity ^0.8.12;
 import "@account-abstraction/contracts/core/BasePaymaster.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../../router-contracts/IGateway.sol";
 
 import "hardhat/console.sol";
 /**
@@ -24,14 +25,17 @@ contract EnclaveSolverPaymasterV2 is BasePaymaster {
     using UserOperationLib for UserOperation;
 
     address public immutable verifyingSigner;
+    address gatewayContract;
 
     uint256 private constant VALID_TIMESTAMP_OFFSET = 20; // remains the same
     uint256 private constant TOKEN_ADDRESS_OFFSET = 84;   // updated
     uint256 private constant AMOUNT_OFFSET = 116;          // updated
     uint256 private constant SIGNATURE_OFFSET = 148;   
+    uint256 private constant RECLAIM_PLAN_OFFSET = 213; // 65 Byte signature for ECDSA eth.sign
 
-    constructor(IEntryPoint _entryPoint, address _verifyingSigner) BasePaymaster(_entryPoint) {
+    constructor(IEntryPoint _entryPoint, address _verifyingSigner, address _gatewayContract) BasePaymaster(_entryPoint) {
         verifyingSigner = _verifyingSigner;
+        gatewayContract = _gatewayContract;
     }
 
     mapping(address => uint256) public senderNonce;
@@ -99,7 +103,7 @@ contract EnclaveSolverPaymasterV2 is BasePaymaster {
     {
         (requiredPreFund);
 
-        (uint48 validUntil, uint48 validAfter, address _tokenAddress, uint256 _amount, bytes calldata signature) =
+        (uint48 validUntil, uint48 validAfter, address _tokenAddress, uint256 _amount, bytes calldata reclaimPlan, bytes calldata signature) =
             parsePaymasterAndData(userOp.paymasterAndData);
         //ECDSA library supports both 64 and 65-byte long signatures.
         // we only "require" it here so that the revert reason on invalid signature will be of "VerifyingPaymaster", and not "ECDSA"
@@ -108,7 +112,7 @@ contract EnclaveSolverPaymasterV2 is BasePaymaster {
             "VerifyingPaymaster: invalid signature length in paymasterAndData"
         );
         bytes32 hash = ECDSA.toEthSignedMessageHash(getHash(userOp, validUntil, validAfter, _tokenAddress, _amount));
-        senderNonce[userOp.getSender()]++;
+        // senderNonce[userOp.getSender()]++;
 
         //don't revert on signature failure: return SIG_VALIDATION_FAILED
         if (verifyingSigner != ECDSA.recover(hash, signature)) {
@@ -123,7 +127,7 @@ contract EnclaveSolverPaymasterV2 is BasePaymaster {
     function parsePaymasterAndData(bytes calldata paymasterAndData)
         public
         pure
-        returns (uint48 validUntil, uint48 validAfter, address tokenAddress, uint256 amount, bytes calldata signature)
+        returns (uint48 validUntil, uint48 validAfter, address tokenAddress, uint256 amount, bytes calldata signature, bytes calldata reclaimPlan)
     {
         (validUntil, validAfter) =
             abi.decode(paymasterAndData[VALID_TIMESTAMP_OFFSET:TOKEN_ADDRESS_OFFSET], (uint48, uint48));
@@ -133,15 +137,26 @@ contract EnclaveSolverPaymasterV2 is BasePaymaster {
         console.log("Token Address: ", tokenAddress);
         (amount) = abi.decode(paymasterAndData[AMOUNT_OFFSET:SIGNATURE_OFFSET], (uint256));
         console.log("Amount: ", amount);
-        signature = paymasterAndData[SIGNATURE_OFFSET:];
+        signature = paymasterAndData[SIGNATURE_OFFSET:RECLAIM_PLAN_OFFSET];
+        reclaimPlan = paymasterAndData[RECLAIM_PLAN_OFFSET:];
     }
 
     function claim(UserOperation calldata userOp, bytes32 hash) public {
-        (uint48 validUntil, uint48 validAfter, address _tokenAddress, uint256 _amount, bytes calldata signature) = parsePaymasterAndData(userOp.paymasterAndData);
+        (uint48 validUntil, uint48 validAfter, address _tokenAddress, uint256 _amount, bytes calldata signature, bytes calldata reclaimPlan) = parsePaymasterAndData(userOp.paymasterAndData);
         (validAfter);
         (validUntil);
         require(verifyingSigner == ECDSA.recover(hash, signature), "Paymaster: Invalid claim signature");
         require(IERC20(_tokenAddress).transfer(userOp.getSender(), _amount), "Paymaster: Claim failed");
+
+        // IGateway(gatewayContract).iSend{ value: msg.value }(
+        //     1,
+        //     0,
+        //     string(""),
+        //     destChainId, // router chain id
+        //     requestMetadata,
+        //     requestPacket
+        //   );        
+
         emit SolverSponsored(userOp.getSender(), _tokenAddress, _amount, address(this));
     }
 }

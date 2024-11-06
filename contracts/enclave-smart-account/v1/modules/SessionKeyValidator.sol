@@ -8,6 +8,7 @@ import "@account-abstraction/contracts/core/Helpers.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../../EnclaveRegistry.sol";
 import "../../P256V.sol";
 import "../P256SmartAccountV1.sol";
@@ -18,8 +19,11 @@ bytes4 constant ERC1271_MAGICVALUE = 0x1626ba7e;
 bytes4 constant ERC1271_INVALID = 0xffffffff;
 
 contract SessionKeyValidator is IValidator {
-    mapping(address => bool) internal _initialized;
+    mapping(address => bool) internal isDisabled;
+    mapping(address => bytes32) smartAccountSessionKeyRoot;
     EnclaveRegistry enclaveRegistry;
+
+    event RootUpdated(address indexed smartAccount, uint256 indexed timestamp);
 
     constructor (address _enclaveRegistry) {
         enclaveRegistry = EnclaveRegistry(_enclaveRegistry);
@@ -27,20 +31,25 @@ contract SessionKeyValidator is IValidator {
 
     function onInstall(bytes calldata) external override {
         if (isInitialized(msg.sender)) revert AlreadyInitialized(msg.sender);
-        _initialized[msg.sender] = true;
+        isDisabled[msg.sender] = false;
     }
 
     function onUninstall(bytes calldata) external override {
         if (!isInitialized(msg.sender)) revert NotInitialized(msg.sender);
-        _initialized[msg.sender] = false;
+        isDisabled[msg.sender] = true;
     }
 
     function isInitialized(address smartAccount) public view override returns (bool) {
-        return _initialized[smartAccount];
+        return !isDisabled[smartAccount];
     }
 
     function isModuleType(uint256 moduleTypeId) external pure override returns (bool) {
         return moduleTypeId == MODULE_TYPE_VALIDATOR;
+    }
+
+    function updateRoot(bytes32 merkleRoot) external {
+        smartAccountSessionKeyRoot[msg.sender] = merkleRoot;
+        emit RootUpdated(msg.sender, block.timestamp);
     }
 
     function validateUserOp(
@@ -52,9 +61,35 @@ contract SessionKeyValidator is IValidator {
         view
         returns (uint256)
     {
-        address owner = P256SmartAccountV1(payable(userOp.sender)).eoaOwner();
         bytes32 hash = ECDSA.toEthSignedMessageHash(userOpHash);
-        if (owner != ECDSA.recover(hash, userOp.signature)) {
+        (
+            uint256 validUntil, 
+            uint256 validAfter, 
+            bytes memory sessionKeyData,
+            bytes32[] memory merkleProof, 
+            bytes memory sessionKeySignature
+        ) = abi.decode(
+            userOp.signature,
+            (uint256, uint256, bytes, bytes32[], bytes)
+        );
+
+        address sessionKey = ECDSA.recover(hash, sessionKeySignature);
+
+        (
+            bytes4 functionSig,
+            address contractAddress
+        ) = abi.decode(
+            sessionKeyData,
+            (bytes4, address)
+        );
+
+        bytes32 leaf = keccak256(abi.encode(
+            validUntil, validAfter, contractAddress, functionSig, sessionKey
+        ));
+
+        bytes32 merkleRoot = smartAccountSessionKeyRoot[msg.sender];
+
+        if (!MerkleProof.verify(merkleProof, merkleRoot, leaf)) {
             return 1;
         }
         return 0;
@@ -66,13 +101,35 @@ contract SessionKeyValidator is IValidator {
         override
         returns (bytes4)
     {
-        address owner = P256SmartAccountV1(payable(msg.sender)).eoaOwner();
-        if (owner == ECDSA.recover(hash, sig)) {
-            return ERC1271_MAGICVALUE;
-        }
         bytes32 ethHash = ECDSA.toEthSignedMessageHash(hash);
-        address recovered = ECDSA.recover(ethHash, sig);
-        if (owner != recovered) {
+        (
+            uint256 validUntil, 
+            uint256 validAfter, 
+            bytes memory sessionKeyData,
+            bytes32[] memory merkleProof, 
+            bytes memory sessionKeySignature
+        ) = abi.decode(
+            sig,
+            (uint256, uint256, bytes, bytes32[], bytes)
+        );
+
+        address sessionKey = ECDSA.recover(ethHash, sessionKeySignature);
+
+        (
+            bytes4 functionSig,
+            address contractAddress
+        ) = abi.decode(
+            sessionKeyData,
+            (bytes4, address)
+        );
+
+        bytes32 leaf = keccak256(abi.encode(
+            validUntil, validAfter, contractAddress, functionSig, sessionKey
+        ));
+
+        bytes32 merkleRoot = smartAccountSessionKeyRoot[msg.sender];
+
+        if (!MerkleProof.verify(merkleProof, merkleRoot, leaf)) {
             return ERC1271_INVALID;
         }
         return ERC1271_MAGICVALUE;

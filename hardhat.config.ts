@@ -69,7 +69,16 @@ const config: HardhatUserConfig = {
     ]
   },
   networks: {
-    dev: {url: "http://127.0.0.1:8545"},
+    dev: {
+      url: "http://127.0.0.1:8545",
+    },
+    hardhat: {
+      forking: {
+          url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`, // or use Alchemy
+          blockNumber: 21128662 // Optional: specify a block number to fork from
+      }
+    },
+    dev2: {url: "https://127.0.0.1:4200"},
     arbitrumSepolia: {
       url: "https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
       accounts: [process.env.PRIVATE_KEY as string], // replace with your private key
@@ -92,7 +101,7 @@ const config: HardhatUserConfig = {
     kakarotSepoliaNew: getNetwork1("https://rpc-kakarot-sepolia.karnot.xyz"),
     // kakarotSepoliaNew: getNetworkProd("https://rpc-kakarot-sepolia.karnot.xyz"),
 
-
+    ethmain: getNetwork1("https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
     opmain: getNetwork1("https://optimism-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
     arbmain: getNetwork1("https://arbitrum-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
     // polymain: getNetwork1("https://polygon-mainnet.infura.io/v3/16fb3743839e4f80841b0401a68a020f"),

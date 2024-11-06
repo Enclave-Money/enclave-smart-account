@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 async function main() {
     // const walletAddress = '0xD02Fd04e15a595019b7c60Eb257B3B7D333F6C00';
     // const walletAddress = '0xFe7bd528ec2375a3d6Bd3fB37E55f6BD7ae229aa';
-    const walletAddress = '0xd11b1d18392bEE5a5A95F7e4Abb4bEDfa1Eb6959';
+    const walletAddress = '0xca590F4dfEcD2763c11918b759EFF1FF709E77B0';
     const balance = await ethers.provider.getBalance(walletAddress);
     console.log("WEI Balance: ", balance);
     console.log("ETH Balance: ", ethers.formatEther(balance));

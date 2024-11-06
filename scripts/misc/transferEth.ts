@@ -5,8 +5,8 @@ async function main() {
 
     // const recipientAddress = '0xFe7bd528ec2375a3d6Bd3fB37E55f6BD7ae229aa';
     // const recipientAddress = '0xd11b1d18392bEE5a5A95F7e4Abb4bEDfa1Eb6959';
-    const recipientAddress = '0xada592b297ab5a01B0D0563eeBb692dE461Ad92a';
-    const amountInEther = '0.01'; // Amount to send in ETH
+    const recipientAddress = '0xca590F4dfEcD2763c11918b759EFF1FF709E77B0';
+    const amountInEther = '1'; // Amount to send in ETH
 
     const tx = await signer.sendTransaction({
         to: recipientAddress,

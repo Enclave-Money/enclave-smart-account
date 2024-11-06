@@ -43,8 +43,11 @@ contract P256SmartAccountV1 is
         UserOperation calldata userOp,
         bytes32 userOpHash
     ) internal virtual override returns (uint256 validationData) {
-        // Get the validation mode from the nonce
-        uint256 validationMode = userOp.nonce;
+        // Decode the validation mode and actual signature from userOp.signature
+        (uint256 validationMode, bytes memory actualSignature) = abi.decode(userOp.signature, (uint256, bytes));
+
+        console.log("validation mode: ", validationMode);
+        console.log("signature: ", string(actualSignature));
         
         // Get validator address based on the mode
         address validator;
@@ -63,14 +66,22 @@ contract P256SmartAccountV1 is
             return SIG_VALIDATION_FAILED;
         }
         
+        console.log("selected validator: ", validator);
+
+        // Create modified UserOperation with actual signature
+        UserOperation memory modifiedUserOp = userOp;
+        modifiedUserOp.signature = actualSignature;
+    
         // Call the validator's validateUserOp function
         (bool success, bytes memory result) = validator.call(
             abi.encodeWithSignature(
                 "validateUserOp((address,uint256,bytes,bytes,uint256,uint256,uint256,uint256,uint256,bytes,bytes),bytes32)",
-                userOp,
+                modifiedUserOp,
                 userOpHash
             )
         );
+    
+        console.log("Account validation result: ", abi.decode(result, (uint256)));
         
         // If the call failed or returned invalid data, return validation failed
         if (!success || result.length != 32) {

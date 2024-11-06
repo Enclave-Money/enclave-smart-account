@@ -4,23 +4,32 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../interfaces/IEnclaveTokenVault.sol";
+import "../../router-contracts/IDapp.sol";
 
 import "hardhat/console.sol";
 
-contract EnclaveTokenVaultV1 is ReentrancyGuard, IEnclaveTokenVaultV0 {
+contract EnclaveTokenVaultV1 is ReentrancyGuard, IEnclaveTokenVaultV0, IDapp {
 
     // Stores positive
     mapping(address => mapping(address => uint256)) public deposits;
     mapping(address => bool) public isVaultManager;
     mapping(address => bool) public isRegisteredSolverAddress;
 
-    constructor(address _vaultManager) {
+    address gatewayContract;
+
+    constructor(address _vaultManager, address _gatewayContract) {
         isVaultManager[_vaultManager] = true;
+        gatewayContract = _gatewayContract;
         emit VaultManagerAdded(_vaultManager);
     }
 
     modifier onlyVaultManager() {
         require(isVaultManager[msg.sender], "Caller is not a vault manager");
+        _;
+    }
+
+    modifier onlyGateway () {
+        require(msg.sender == gatewayContract, "Caller is not gateway");
         _;
     }
 
@@ -59,6 +68,15 @@ contract EnclaveTokenVaultV1 is ReentrancyGuard, IEnclaveTokenVaultV0 {
         emit Withdrawn(msg.sender, _tokenAddress, _amount);
     }
 
+    function payoutTo(address _tokenAddress, uint256 _amount, address receiverAddress, address userAddress) external nonReentrant onlyVaultManager {
+        require(_amount > 0, "Amount must be greater than 0");
+        require(deposits[_tokenAddress][userAddress] >= _amount, "Insufficient balance");
+        
+        deposits[_tokenAddress][userAddress] -= _amount;
+        require(IERC20(_tokenAddress).transfer(receiverAddress, _amount), "Transfer failed");
+        emit Withdrawn(receiverAddress, _tokenAddress, _amount);
+    }
+
     function claim(address _tokenAddress, uint256 _amount, bytes calldata _proof) external nonReentrant onlyVaultManager {
         console.log("Claiming amount: %s", _amount);
         require(_amount > 0, "Amount must be greater than 0");
@@ -75,5 +93,40 @@ contract EnclaveTokenVaultV1 is ReentrancyGuard, IEnclaveTokenVaultV0 {
         require(IERC20(_tokenAddress).transfer(_claimer, _amount), "Transfer failed");
         console.log("Transfer successful");
         emit Claimed(_claimer, _tokenAddress, _amount, _owner);
+    }
+
+    function iAck(uint256 requestIdentifier, bool execFlags, bytes memory execData) external {
+
+    }
+
+    function iReceive(
+        string calldata requestSender, 
+        bytes calldata packet,
+        string calldata srcChainId
+    ) external onlyGateway returns (bytes memory) {
+        (
+            address userAddress,
+            address tokenAddress,
+            uint256 amount,
+            address receiverAddress
+        ) = abi.decode(
+            packet,
+            (address, address, uint256, address)
+        );
+
+        console.log("Claiming amount: %s", amount);
+        require(amount > 0, "Amount must be greater than 0");
+
+        require(deposits[tokenAddress][userAddress] >= amount, "Insufficient balance");
+        console.log("Sufficient balance");
+
+        deposits[tokenAddress][userAddress] -= amount;
+        console.log("Balance after claim: %s", deposits[tokenAddress][userAddress]);
+
+        require(IERC20(tokenAddress).transfer(receiverAddress, amount), "Transfer failed");
+        console.log("Transfer successful");
+        emit Claimed(receiverAddress, tokenAddress, amount, userAddress);
+        
+        return abi.encode(requestSender, packet, srcChainId);
     }
 }
