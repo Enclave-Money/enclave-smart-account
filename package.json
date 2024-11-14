@@ -37,6 +37,7 @@
     "@noble/curves": "^1.4.0",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.10",
     "@openzeppelin/contracts": "^4.9.0",
+    "@routerprotocol/router-chain-sdk-ts": "^0.8.70-beta-0.2",
     "@uniswap/lib": "^4.0.1-alpha",
     "@uniswap/swap-router-contracts": "^1.3.1",
     "@uniswap/v3-periphery": "^1.4.4",

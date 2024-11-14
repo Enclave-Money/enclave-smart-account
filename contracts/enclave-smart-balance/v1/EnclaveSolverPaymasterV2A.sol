@@ -20,12 +20,14 @@ import "hardhat/console.sol";
  * - the account checks a signature to prove identity and account ownership.
  */
 
-contract EnclaveSolverPaymasterV2 is BasePaymaster {
+contract EnclaveSolverPaymasterV2A is BasePaymaster {
     using ECDSA for bytes32;
     using UserOperationLib for UserOperation;
 
     address public immutable verifyingSigner;
-    address gatewayContract;
+    address public gatewayContract;
+    string public routerRNSAddress;
+    string public routerChainId;
 
     uint256 private constant VALID_TIMESTAMP_OFFSET = 20; // remains the same
     uint256 private constant TOKEN_ADDRESS_OFFSET = 84;   // updated
@@ -33,8 +35,17 @@ contract EnclaveSolverPaymasterV2 is BasePaymaster {
     uint256 private constant SIGNATURE_OFFSET = 148;   
     uint256 private constant RECLAIM_PLAN_OFFSET = 213; // 65 Byte signature for ECDSA eth.sign
 
-    constructor(IEntryPoint _entryPoint, address _verifyingSigner, address _gatewayContract) BasePaymaster(_entryPoint) {
+    constructor(
+        address _verifyingSigner, 
+        IEntryPoint _entryPoint, 
+        address _gatewayContract,
+        string memory _routerRNSAddress, 
+        string memory _routerChainId
+    ) BasePaymaster(_entryPoint)
+    {
         verifyingSigner = _verifyingSigner;
+        routerRNSAddress = _routerRNSAddress;
+        routerChainId = _routerChainId;
         gatewayContract = _gatewayContract;
     }
 
@@ -103,7 +114,7 @@ contract EnclaveSolverPaymasterV2 is BasePaymaster {
     {
         (requiredPreFund);
 
-        (uint48 validUntil, uint48 validAfter, address _tokenAddress, uint256 _amount, bytes calldata reclaimPlan, bytes calldata signature) =
+        (uint48 validUntil, uint48 validAfter, address _tokenAddress, uint256 _amount, bytes calldata signature, /* bytes calldata reclaimPlan */) =
             parsePaymasterAndData(userOp.paymasterAndData);
         //ECDSA library supports both 64 and 65-byte long signatures.
         // we only "require" it here so that the revert reason on invalid signature will be of "VerifyingPaymaster", and not "ECDSA"
@@ -112,7 +123,7 @@ contract EnclaveSolverPaymasterV2 is BasePaymaster {
             "VerifyingPaymaster: invalid signature length in paymasterAndData"
         );
         bytes32 hash = ECDSA.toEthSignedMessageHash(getHash(userOp, validUntil, validAfter, _tokenAddress, _amount));
-        // senderNonce[userOp.getSender()]++;
+        senderNonce[userOp.getSender()]++;
 
         //don't revert on signature failure: return SIG_VALIDATION_FAILED
         if (verifyingSigner != ECDSA.recover(hash, signature)) {
@@ -147,16 +158,34 @@ contract EnclaveSolverPaymasterV2 is BasePaymaster {
         (validUntil);
         require(verifyingSigner == ECDSA.recover(hash, signature), "Paymaster: Invalid claim signature");
         require(IERC20(_tokenAddress).transfer(userOp.getSender(), _amount), "Paymaster: Claim failed");
+        bytes memory requestPacket = abi.encode(routerRNSAddress, reclaimPlan);
 
-        // IGateway(gatewayContract).iSend{ value: msg.value }(
-        //     1,
-        //     0,
-        //     string(""),
-        //     destChainId, // router chain id
-        //     requestMetadata,
-        //     requestPacket
-        //   );        
+        bytes memory requestMetadata = abi.encodePacked(
+            uint64(5000000),
+            uint64(50000000),
+            uint64(5000000),
+            uint64(50000000),
+            uint128(0),
+            uint8(0),
+            false,
+            ""
+        );
+
+        IGateway(
+            gatewayContract
+        ).iSend(
+            1,
+            0,
+            string(""),
+            routerChainId, // router chain id
+            requestMetadata,
+            requestPacket
+        );        
 
         emit SolverSponsored(userOp.getSender(), _tokenAddress, _amount, address(this));
+    }
+
+    function setDappMetadata(string memory feePayerAddress) external onlyOwner {
+        IGateway(gatewayContract).setDappMetadata(feePayerAddress);
     }
 }

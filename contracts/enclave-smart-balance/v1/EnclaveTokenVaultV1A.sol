@@ -5,21 +5,27 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../interfaces/IEnclaveTokenVault.sol";
 import "../../router-contracts/IDapp.sol";
+import "../../router-contracts/IGateway.sol";
+
+import "../../enclave-smart-account/EnclaveRegistry.sol";
 
 import "hardhat/console.sol";
 
-contract EnclaveTokenVaultV1 is ReentrancyGuard, IEnclaveTokenVaultV0, IDapp {
+contract EnclaveTokenVaultV1A is ReentrancyGuard, IEnclaveTokenVaultV0, IDapp {
 
-    // Stores positive
     mapping(address => mapping(address => uint256)) public deposits;
     mapping(address => bool) public isVaultManager;
     mapping(address => bool) public isRegisteredSolverAddress;
 
-    address gatewayContract;
+    address public gatewayContract;
+    string public routerRNSAddress;   
+    string public routerChainId; 
 
-    constructor(address _vaultManager, address _gatewayContract) {
+    constructor(address _vaultManager, address _gatewayContract, string memory _routerRNSAddress, string memory _routerChainId) {
         isVaultManager[_vaultManager] = true;
         gatewayContract = _gatewayContract;
+        routerRNSAddress = _routerRNSAddress;
+        routerChainId = _routerChainId;
         emit VaultManagerAdded(_vaultManager);
     }
 
@@ -68,36 +74,7 @@ contract EnclaveTokenVaultV1 is ReentrancyGuard, IEnclaveTokenVaultV0, IDapp {
         emit Withdrawn(msg.sender, _tokenAddress, _amount);
     }
 
-    function payoutTo(address _tokenAddress, uint256 _amount, address receiverAddress, address userAddress) external nonReentrant onlyVaultManager {
-        require(_amount > 0, "Amount must be greater than 0");
-        require(deposits[_tokenAddress][userAddress] >= _amount, "Insufficient balance");
-        
-        deposits[_tokenAddress][userAddress] -= _amount;
-        require(IERC20(_tokenAddress).transfer(receiverAddress, _amount), "Transfer failed");
-        emit Withdrawn(receiverAddress, _tokenAddress, _amount);
-    }
-
-    function claim(address _tokenAddress, uint256 _amount, bytes calldata _proof) external nonReentrant onlyVaultManager {
-        console.log("Claiming amount: %s", _amount);
-        require(_amount > 0, "Amount must be greater than 0");
-        console.log("Claim amount: %s", _amount);
-
-        (address _owner, address  _claimer) = abi.decode(_proof, (address, address));
-
-        require(deposits[_tokenAddress][_owner] >= _amount, "Insufficient balance");
-        console.log("Sufficient balance");
-
-        deposits[_tokenAddress][_owner] -= _amount;
-        console.log("Balance after claim: %s", deposits[_tokenAddress][_owner]);
-
-        require(IERC20(_tokenAddress).transfer(_claimer, _amount), "Transfer failed");
-        console.log("Transfer successful");
-        emit Claimed(_claimer, _tokenAddress, _amount, _owner);
-    }
-
-    function iAck(uint256 requestIdentifier, bool execFlags, bytes memory execData) external {
-
-    }
+    function claim(address _tokenAddress, uint256 _amount, bytes calldata _proof) external nonReentrant onlyVaultManager {}
 
     function iReceive(
         string calldata requestSender, 
@@ -114,6 +91,16 @@ contract EnclaveTokenVaultV1 is ReentrancyGuard, IEnclaveTokenVaultV0, IDapp {
             (address, address, uint256, address)
         );
 
+        require(
+            keccak256(bytes(requestSender)) == keccak256(bytes(routerRNSAddress)),
+            "Invalid request sender"
+        );
+        
+        require(
+            keccak256(bytes(srcChainId)) == keccak256((bytes(routerChainId))),
+            "Invalid source chain id"
+        );
+
         console.log("Claiming amount: %s", amount);
         require(amount > 0, "Amount must be greater than 0");
 
@@ -128,5 +115,11 @@ contract EnclaveTokenVaultV1 is ReentrancyGuard, IEnclaveTokenVaultV0, IDapp {
         emit Claimed(receiverAddress, tokenAddress, amount, userAddress);
         
         return abi.encode(requestSender, packet, srcChainId);
+    }
+
+    function iAck(uint256 requestIdentifier, bool execFlags, bytes memory execData) external {}
+
+    function setDappMetadata(string memory feePayerAddress) external onlyVaultManager {
+        IGateway(gatewayContract).setDappMetadata(feePayerAddress);
     }
 }

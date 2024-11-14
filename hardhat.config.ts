@@ -116,6 +116,7 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
+      opSepolia: process.env.OP_SCAN_API_KEY as string,
       arbSepolia: "MD9NYEJGPWUSBESQP9QQGFTB4G4EKKU69U",
       opmain: process.env.OP_SCAN_API_KEY as string,
       arbmain: process.env.ARB_SCAN_API_KEY as string,
@@ -135,6 +136,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.arbiscan.io/api",
           browserURL: "https://sepolia.arbiscan.io/",
+        },
+      },
+      {
+        network: 'opSepolia',
+        chainId: 11155420,
+        urls: {
+          apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
+          browserURL: "https://sepolia-optimistic.etherscan.io/",
         },
       },
       {

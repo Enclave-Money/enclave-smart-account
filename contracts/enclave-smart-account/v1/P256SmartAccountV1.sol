@@ -16,6 +16,9 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 import "../EnclaveRegistry.sol";
+import "../../enclave-smart-balance/interfaces/IEnclaveTokenVault.sol";
+
+import "../EnclaveRegistry.sol";
 import "../P256V.sol";
 import "../P256SmartAccount.sol";
 
@@ -31,12 +34,17 @@ contract P256SmartAccountV1 is
     P256SmartAccount
 {
     address public eoaOwner;
+    bool public smartBalanceEnabled;
 
-    /// @inheritdoc BaseAccount
-    function entryPoint() public view virtual override returns (IEntryPoint) {
-        address _entryPoint = EnclaveRegistry(enclaveRegistry)
-            .getRegistryAddress("entryPoint");
-        return IEntryPoint(_entryPoint);
+    function initialize(
+        uint256[2] memory _pubKey,
+        address _enclaveRegistry
+    ) public virtual override initializer {
+        // Call the initialize function of the superclass
+        super.initialize(_pubKey, _enclaveRegistry);
+        
+        // Set smartBalanceEnabled to true
+        smartBalanceEnabled = true;
     }
 
     function _validateSignature(
@@ -54,12 +62,13 @@ contract P256SmartAccountV1 is
         if (validationMode == 0) {
             validator = EnclaveRegistry(enclaveRegistry).getRegistryAddress("P256Validator");
         } else if (validationMode == 1) {
-            require(eoaOwner != address(0), "EOA Not enabled");
+            require(eoaOwner != address(0), "EOA not enabled");
             validator = EnclaveRegistry(enclaveRegistry).getRegistryAddress("ECDSAValidator");
         } else if (validationMode == 2) {
-            validator = EnclaveRegistry(enclaveRegistry).getRegistryAddress("MultichainECDSAValidator");
-        } else if (validationMode == 3) {
             validator = EnclaveRegistry(enclaveRegistry).getRegistryAddress("MultichainP256Validator");
+        } else if (validationMode == 3) {
+            require(eoaOwner != address(0), "EOA not enabled");
+            validator = EnclaveRegistry(enclaveRegistry).getRegistryAddress("MultichainECDSAValidator");
         } else if (validationMode == 4) {
             validator = EnclaveRegistry(enclaveRegistry).getRegistryAddress("SessionKeyValidator");
         } else {
@@ -97,17 +106,31 @@ contract P256SmartAccountV1 is
      * @param newOwner The address of the new EOA owner
      * @dev Can only be called by the contract itself (through execute)
      */
-    function setEoaOwner(address newOwner) external {
-        require(msg.sender == address(this), "Only callable by self");
+    function setEoaOwner(address newOwner) external onlyOwner {
         eoaOwner = newOwner;
     }
+
+    function setSmartBalanceEnabled(bool _smartBalanceEnabled) external onlyOwner {
+        smartBalanceEnabled = _smartBalanceEnabled;
+    }
+
+    modifier onlySmartBalanceConversionManager() {
+        require(
+            msg.sender == address(this) ||
+            msg.sender == EnclaveRegistry(enclaveRegistry).getRegistryAddress("smartBalanceConversionManager"),
+            "Convert: Invalid caller"
+        );
+        _;
+    }
     
-    /**
-     * @notice Sets the EOA owner address to 0x
-     * @dev Can only be called by the contract itself (through execute)
-     */
-    function disableEoaOwner() external {
-        require(msg.sender == address(this), "Only callable by self");
-        eoaOwner = address(0);
+    function smartBalanceConvert(address tokenAddress) external onlySmartBalanceConversionManager {
+        require(smartBalanceEnabled, "Convert: Smart balance not enabled");
+
+        IERC20 smartBalanceToken = IERC20(tokenAddress);
+        IEnclaveTokenVaultV0 vault = IEnclaveTokenVaultV0(EnclaveRegistry(enclaveRegistry).getRegistryAddress("smartBalanceVault"));
+        uint256 balance = smartBalanceToken.balanceOf(address(this));
+
+        smartBalanceToken.approve(address(vault), balance);
+        vault.deposit(tokenAddress, balance);
     }
 }
