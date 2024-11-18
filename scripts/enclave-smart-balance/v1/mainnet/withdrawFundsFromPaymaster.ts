@@ -6,11 +6,12 @@ import { getContractFactory } from "@nomicfoundation/hardhat-ethers/types";
 
 async function main() {
 
-    const CHAIN_ID = 8453;
+    const CHAIN_ID = 42161;
   // USE DEPLOYMENT KEY FOR SAME ADDR DEPLOYMENT
-  const paymasterAddress = "0x2770A44cd727982558d625f56b2b7dE3842188ac";
+//   const paymasterAddress = "0x2770A44cd727982558d625f56b2b7dE3842188ac";
+    const paymasterAddress = "0xB3a2729638C3667C9559DD75a3504C57D1025999";
 
-  const paymasterContractFactory = await ethers.getContractFactory("EnclaveSolverPaymasterV2B");
+  const paymasterContractFactory = await ethers.getContractFactory("EnclaveSolverPaymasterV2C");
 
   const paymasterContract = paymasterContractFactory.attach(paymasterAddress);
 
@@ -99,8 +100,8 @@ async function main() {
   );
 
   const encodedAmount = ethers.AbiCoder.defaultAbiCoder().encode(
-    ["address", "uint256"],
-    [addresses[0],balance]
+    ["address", "uint256", "uint256"],
+    [addresses[0],balance, balance]
   );
 
   const paymasterAndData = hexConcat([
@@ -117,7 +118,7 @@ async function main() {
   const parsedPaymasterAndData = await paymasterContract.parsePaymasterAndData(paymasterAndData);
   console.log("Parsed: ", parsedPaymasterAndData);
 
-  const preParsedReclaim = parsedPaymasterAndData[5];
+  const preParsedReclaim = parsedPaymasterAndData[6];
 
   const parsedReclaimPlan = ethers.AbiCoder.defaultAbiCoder().decode(
     ["string[]", "address[]", "uint256[]", "address", "address"],
