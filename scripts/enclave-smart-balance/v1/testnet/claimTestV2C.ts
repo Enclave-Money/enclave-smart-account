@@ -1,6 +1,13 @@
 import { getBytes, keccak256, toUtf8Bytes } from "ethers";
 import { ethers } from "hardhat";
-import { hexConcat } from "../../../constants";
+
+function hexConcat(items: string[]) {
+    let result = "0x";
+    items.forEach((item) => {
+        result += item.substring(2);
+    });
+    return result;
+}
 
 function toEIP191SignableMessage(hash: string): string {
   const messagePrefix = "\x19Ethereum Signed Message:\n32";
@@ -58,12 +65,12 @@ async function main() {
   const requestPacket = ethers.AbiCoder.defaultAbiCoder().encode(["string", "bytes"], [routerRNSAddress, reclaimPlan]);
   console.log("Request Packet: ", requestPacket);
 
-  const paymasterContractFactory = await ethers.getContractFactory("EnclaveSolverPaymasterV2B");
+  const paymasterContractFactory = await ethers.getContractFactory("EnclaveSolverPaymasterV2C");
   // OP
-  const paymasterContract = paymasterContractFactory.attach("0x06E32e97556745C45f0636E23d0AE1FDdce72503");
+  // const paymasterContract = paymasterContractFactory.attach("0x06E32e97556745C45f0636E23d0AE1FDdce72503");
 
-    // const paymasterContract = await paymasterContractFactory.deploy(VerifyingSigner, VerifyingSigner, VerifyingSigner, "yo", "1");
-    // await paymasterContract.waitForDeployment();
+    const paymasterContract = await paymasterContractFactory.deploy(VerifyingSigner, VerifyingSigner, VerifyingSigner, "yo", "1");
+    await paymasterContract.waitForDeployment();
     const paymasterAddress = paymasterContract.target;
 
   const validUntil = Math.floor((Date.now() + 3600000) / 1000);
@@ -83,6 +90,10 @@ async function main() {
   const hash2 = ethers.hashMessage(getBytes(hash));
   console.log("Hash2: ", hash2);
 
+  const ethSignedHash = toEIP191SignableMessage(hash);
+
+  console.log("Paymaster hash: ", hash, " ", ethSignedHash);
+
   const [signer] = await ethers.getSigners();
 
   console.log("Signer Addr: ", signer.address);
@@ -101,8 +112,8 @@ async function main() {
   );
 
   const encodedAmount = ethers.AbiCoder.defaultAbiCoder().encode(
-    ["address", "uint256"],
-    [addresses[1],amounts[0] + amounts[1]]
+    ["address", "uint256", "uint256"],
+    [addresses[1],amounts[0] + amounts[1], amounts[0] + amounts[1]]
   );
 
   const paymasterAndData = hexConcat([
@@ -119,7 +130,7 @@ async function main() {
   const parsedPaymasterAndData = await paymasterContract.parsePaymasterAndData(paymasterAndData);
   console.log("Parsed: ", parsedPaymasterAndData);
 
-  const preParsedReclaim = parsedPaymasterAndData[5];
+  const preParsedReclaim = parsedPaymasterAndData[6];
 
   const parsedReclaimPlan = ethers.AbiCoder.defaultAbiCoder().decode(
     ["string[]", "address[]", "uint256[]", "address", "address"],

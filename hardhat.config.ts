@@ -107,7 +107,15 @@ const config: HardhatUserConfig = {
     // polymain: getNetwork1("https://polygon-mainnet.infura.io/v3/16fb3743839e4f80841b0401a68a020f"),
     basemain: getNetwork1("https://1rpc.io/base"),
     avaxmain: getNetwork1("https://avalanche-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
-    // bnbmain: getNetworkProd("https://bsc-mainnet.infura.io/v3/16fb3743839e4f80841b0401a68a020f"),
+
+    ethmain2: getNetworkProd("https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    opmain2: getNetworkProd("https://optimism-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    arbmain2: getNetworkProd("https://arbitrum-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    // polymain2: getNetwork1("https://polygon-mainnet.infura.io/v3/16fb3743839e4f80841b0401a68a020f"),
+    basemain2: getNetworkProd("https://1rpc.io/base"),
+    avaxmain2: getNetworkProd("https://avalanche-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+  
+    // bnbmain: getNetworkProd("https://bsc-mainnet.infura.io/v3/16fb3743839e4f80841b0401a68a020f"),  
     // scrollmain: {},
     // blastmain: {},
     // beramain: {},

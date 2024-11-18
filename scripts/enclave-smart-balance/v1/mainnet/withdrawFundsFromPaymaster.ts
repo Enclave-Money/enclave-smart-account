@@ -1,18 +1,21 @@
-import { getBytes, keccak256, toUtf8Bytes } from "ethers";
 import { ethers } from "hardhat";
+import { USDC_ADDRESSES } from "./0-constants";
 import { hexConcat } from "../../../constants";
-
-function toEIP191SignableMessage(hash: string): string {
-  const messagePrefix = "\x19Ethereum Signed Message:\n32";
-  const message = messagePrefix + hash;
-  const messageBytes = toUtf8Bytes(message);
-  const prefixedHash = keccak256(messageBytes);
-  return prefixedHash;
-}
+import { getBytes } from "ethers";
+import { getContractFactory } from "@nomicfoundation/hardhat-ethers/types";
 
 async function main() {
+
+    const CHAIN_ID = 8453;
+  // USE DEPLOYMENT KEY FOR SAME ADDR DEPLOYMENT
+  const paymasterAddress = "0x2770A44cd727982558d625f56b2b7dE3842188ac";
+
+  const paymasterContractFactory = await ethers.getContractFactory("EnclaveSolverPaymasterV2B");
+
+  const paymasterContract = paymasterContractFactory.attach(paymasterAddress);
+
   const userOp = {
-    sender: "0xd11b1d18392bEE5a5A95F7e4Abb4bEDfa1Eb6959",
+    sender: "0xD02Fd04e15a595019b7c60Eb257B3B7D333F6C00",
     nonce: "27",
     initCode: "0x",
     callData: "0x47e1da2a000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000001000000000000000000000000f09156042741f67f8099d17eb22638f01f97974b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000044a9059cbb00000000000000000000000049140bb5ad7c8978af483be9ca9eb40e57da0fdf0000000000000000000000000000000000000000000000000000000000003a9800000000000000000000000000000000000000000000000000000000",
@@ -26,23 +29,18 @@ async function main() {
   };
 
   const amounts = [
-    1000000, 
-    1000000
-];
+    0,
+  ];
   const addresses = [
-    "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", 
-    "0x5fd84259d66Cd46123540766Be93DFE6D43130D7"
-]
+    USDC_ADDRESSES[CHAIN_ID], 
+  ];
   const chainIds = [
-    "421614", 
-    "11155420",
-    // "11155111"
-]
-  const userAddress = userOp.sender;
-  const VerifyingSigner = "0x399e8917Cd7Ce367b06bFfd0863E465B0Fd950dB";
-  const routerRNSAddress = "router1uvas7c2nywsegee5s0sq6zyyn7txyr8q79dn0pq3m3k7vz6mq5vshv4jah";
+    CHAIN_ID.toString()
+  ];
 
-//   const paymasterAddress = "0x16c980e71E3f38275B7272603C7dCb0f353afD49"
+  const userAddress = userOp.sender;
+  const VerifyingSigner = "0xD02Fd04e15a595019b7c60Eb257B3B7D333F6C00";
+  const routerRNSAddress = "router12xgvfsvqsp6gw8pd7ven73t07wnz78vvqdxt898tmzmsuhxk0amqkmxg5j";
 
   const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(["string[]", "address[]", "uint256[]", "address", "address"], [
     chainIds,
@@ -58,26 +56,26 @@ async function main() {
   const requestPacket = ethers.AbiCoder.defaultAbiCoder().encode(["string", "bytes"], [routerRNSAddress, reclaimPlan]);
   console.log("Request Packet: ", requestPacket);
 
-  const paymasterContractFactory = await ethers.getContractFactory("EnclaveSolverPaymasterV2B");
-  // OP
-  const paymasterContract = paymasterContractFactory.attach("0x06E32e97556745C45f0636E23d0AE1FDdce72503");
-
-    // const paymasterContract = await paymasterContractFactory.deploy(VerifyingSigner, VerifyingSigner, VerifyingSigner, "yo", "1");
-    // await paymasterContract.waitForDeployment();
-    const paymasterAddress = paymasterContract.target;
-
   const validUntil = Math.floor((Date.now() + 3600000) / 1000);
   const validAfter = Math.floor(Date.now() / 1000);
 
   console.log(validAfter, ' - ', validUntil);
+
+  const usdcFac = await ethers.getContractFactory("ERC20");
+  const usdContract = usdcFac.attach(USDC_ADDRESSES[CHAIN_ID]);
+
+  //@ts-ignore
+  const balance = await usdContract.balanceOf(paymasterAddress);
+
+  console.log("USDC Balance of paymaster: ", balance);
 
   //@ts-ignore
   const hash = await paymasterContract.getHash(
     userOp,
     validUntil,
     validAfter,
-    addresses[1],
-    amounts[0] + amounts[1]
+    addresses[0],
+    balance
   );
 
   const hash2 = ethers.hashMessage(getBytes(hash));
@@ -102,7 +100,7 @@ async function main() {
 
   const encodedAmount = ethers.AbiCoder.defaultAbiCoder().encode(
     ["address", "uint256"],
-    [addresses[1],amounts[0] + amounts[1]]
+    [addresses[0],balance]
   );
 
   const paymasterAndData = hexConcat([
@@ -127,9 +125,35 @@ async function main() {
   );
 
   console.log("Parsed reclaim: ", parsedReclaimPlan);
+
+  // @ts-ignore
+  const requestMetadata = await paymasterContract.getRequestMetadata(
+    5000000,
+    50000000,
+    5000000,
+    0,
+    0,
+    0,
+    false,
+    "0x"
+    );
+
+    console.log("Request metadata: ", requestMetadata);
+
+  //@ts-ignore
+  let tx = await paymasterContract.claim({...userOp, paymasterAndData }, hash2, requestMetadata);
+    await tx.wait();
+
+    //@ts-ignore
+    console.log("ETH balance: ", await paymasterContract.getDeposit());
+
+    //@ts-ignore
+    tx = await paymasterContract.withdrawTo(VerifyingSigner, await paymasterContract.getDeposit());
+    await tx.wait();
 }
 
 main().catch((error) => {
   console.error("Unhandled error:", error);
   process.exit(1);
 });
+
