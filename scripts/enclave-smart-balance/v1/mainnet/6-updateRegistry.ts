@@ -11,12 +11,18 @@ async function main() {
 
     let tx;
 
-    const CHAIN = 8453;
+    const CHAIN = 42161;
+
+    // const vault = {
+    //     42161: "0xABeFc3103d18CD3ba0c86E5471a5BBB18F84D9B6",
+    //     10: "0xABeFc3103d18CD3ba0c86E5471a5BBB18F84D9B6",
+    //     8453: "0xABeFc3103d18CD3ba0c86E5471a5BBB18F84D9B6"
+    // }
 
     const vault = {
-        42161: "0xABeFc3103d18CD3ba0c86E5471a5BBB18F84D9B6",
-        10: "0xABeFc3103d18CD3ba0c86E5471a5BBB18F84D9B6",
-        8453: "0xABeFc3103d18CD3ba0c86E5471a5BBB18F84D9B6"
+        42161: "0x11DCe5ef6E4ADD33c694611da2E205B87Edd23FE",
+        10: "0x11DCe5ef6E4ADD33c694611da2E205B87Edd23FE",
+        8453: "0x11DCe5ef6E4ADD33c694611da2E205B87Edd23FE"
     }
 
     const smartBalanceConversionManager = {
@@ -33,16 +39,16 @@ async function main() {
 
 
     //@ts-ignore
-    tx = await registryContract.updateRegistryAddress("P256Validator", validator[CHAIN]);
-    await tx.wait();
-    //@ts-ignore
-    console.log("Updated validator: ", await registryContract.getRegistryAddress("P256Validator"));
+    // tx = await registryContract.updateRegistryAddress("P256Validator", validator[CHAIN]);
+    // await tx.wait();
+    // //@ts-ignore
+    // console.log("Updated validator: ", await registryContract.getRegistryAddress("P256Validator"));
 
-    //@ts-ignore
-    tx = await registryContract.updateRegistryAddress("smartBalanceConversionManager", smartBalanceConversionManager[CHAIN]);
-    await tx.wait();
-    //@ts-ignore
-    console.log("Updated manager: ", await registryContract.getRegistryAddress("smartBalanceConversionManager"));
+    // //@ts-ignore
+    // tx = await registryContract.updateRegistryAddress("smartBalanceConversionManager", smartBalanceConversionManager[CHAIN]);
+    // await tx.wait();
+    // //@ts-ignore
+    // console.log("Updated manager: ", await registryContract.getRegistryAddress("smartBalanceConversionManager"));
 
     //@ts-ignore
     tx = await registryContract.updateRegistryAddress("smartBalanceVault", vault[CHAIN]);

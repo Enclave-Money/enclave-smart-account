@@ -22,14 +22,20 @@ async function main() {
   const routerRNSAddress = "router12xgvfsvqsp6gw8pd7ven73t07wnz78vvqdxt898tmzmsuhxk0amqkmxg5j";
 
   const vaultContractFactory = await ethers.getContractFactory("EnclaveTokenVaultV1C");
+  const vaultContract = vaultContractFactory.attach("0x11DCe5ef6E4ADD33c694611da2E205B87Edd23FE");
 
-  const vaultContract = await vaultContractFactory.deploy(
-    vaultManager,
-    GatewayMap[CHAIN],
-    routerRNSAddress,
-    routerChainId
-  );
-  await vaultContract.waitForDeployment();
+  // @ts-ignore
+  const deposit = await vaultContract.deposits("0xaf88d065e77c8cC2239327C5EDb3A432268e5831", "0x8c1e8f499472b83a0a96282ed5041c637a984aa1");
+
+  console.log(deposit);
+
+  // const vaultContract = await vaultContractFactory.deploy(
+  //   vaultManager,
+  //   GatewayMap[CHAIN],
+  //   routerRNSAddress,
+  //   routerChainId
+  // );
+  // await vaultContract.waitForDeployment();
   console.log("Vault contract: ", CHAIN, vaultContract.target);
 
   // Deployed at 0x11DCe5ef6E4ADD33c694611da2E205B87Edd23FE (42161, 10, 8453)
