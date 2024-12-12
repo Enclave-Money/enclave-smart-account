@@ -5,10 +5,10 @@ async function main() {
 
     console.log("SIGNER: ", signer.address);
 
-    const recipientAddress = '0x6adaFEf0316e3835324E4605128EF814193a2A0f';
+    const recipientAddress = '0xf716DE79d0781614203BBB53951296E629fEb7fb';
     // const recipientAddress = '0xd11b1d18392bEE5a5A95F7e4Abb4bEDfa1Eb6959';
     // const recipientAddress = '0xca590F4dfEcD2763c11918b759EFF1FF709E77B0';
-    const amountInEther = '0.00001'; // Amount to send in ETH
+    const amountInEther = '0.0001'; // Amount to send in ETH
 
     const tx = await signer.sendTransaction({
         to: recipientAddress,
