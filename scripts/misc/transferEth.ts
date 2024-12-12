@@ -3,10 +3,12 @@ import { ethers } from "hardhat";
 async function main() {
     const [signer] = await ethers.getSigners();
 
-    const recipientAddress = '0xFe7bd528ec2375a3d6Bd3fB37E55f6BD7ae229aa';
+    console.log("SIGNER: ", signer.address);
+
+    const recipientAddress = '0x6adaFEf0316e3835324E4605128EF814193a2A0f';
     // const recipientAddress = '0xd11b1d18392bEE5a5A95F7e4Abb4bEDfa1Eb6959';
     // const recipientAddress = '0xca590F4dfEcD2763c11918b759EFF1FF709E77B0';
-    const amountInEther = '0.0005'; // Amount to send in ETH
+    const amountInEther = '0.00001'; // Amount to send in ETH
 
     const tx = await signer.sendTransaction({
         to: recipientAddress,

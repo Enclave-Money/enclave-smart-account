@@ -23,7 +23,8 @@ function getNetworkTestBalance(url: string) {
 function getNetworkProd(url: string) {
   return {
     url,
-    accounts: [process.env.REGISTRY_DEPLOYMENT_KEY as string] // Change after registry and factory deployment
+    // accounts: [process.env.REGISTRY_DEPLOYMENT_KEY as string] // Change after registry and factory deployment
+    // accounts: [process.env.SMART_ACC_DEP_KEY as string] // SmartAccountFactoryV1 deployment
   };
 }
 

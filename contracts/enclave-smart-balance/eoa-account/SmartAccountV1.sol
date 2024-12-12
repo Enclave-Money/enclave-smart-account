@@ -16,6 +16,7 @@ import "@account-abstraction/contracts/samples/callback/TokenCallbackHandler.sol
 import "../../enclave-smart-account/EnclaveRegistry.sol";
 import "../../enclave-smart-balance/interfaces/IEnclaveTokenVault.sol";
 
+import "hardhat/console.sol";
 /**
  * minimal account.
  *  this is sample minimal account.
@@ -29,8 +30,9 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
     address public enclaveRegistry;
     bool public smartBalanceEnabled;
 
-
-    event SimpleAccountInitialized( address indexed owner);
+    event SmartAccountInitialized(address indexed owner);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event SmartBalanceStatusChanged(bool indexed enabled);
 
     modifier onlyOwner() {
         _onlyOwner();
@@ -102,7 +104,7 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
         owner = anOwner;
         enclaveRegistry = _enclaveRegistry;
         smartBalanceEnabled = true;
-        emit SimpleAccountInitialized(owner);
+        emit SmartAccountInitialized(owner);
     }
 
     // Require the function call went through EntryPoint or owner
@@ -187,6 +189,7 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
 
     function setSmartBalanceEnabled(bool _smartBalanceEnabled) external onlyOwner {
         smartBalanceEnabled = _smartBalanceEnabled;
+        emit SmartBalanceStatusChanged(_smartBalanceEnabled);
     }
 
     modifier onlySmartBalanceConversionManager() {
@@ -207,5 +210,12 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
 
         smartBalanceToken.approve(address(vault), balance);
         vault.deposit(tokenAddress, balance);
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "New owner is the zero address");
+        address oldOwner = owner;
+        owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
     }
 }

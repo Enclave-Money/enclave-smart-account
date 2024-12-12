@@ -3,15 +3,7 @@ pragma solidity ^0.8.19;
 
 import { IValidator, MODULE_TYPE_VALIDATOR } from "./IERC7579Module.sol";
 import { UserOperation } from "@account-abstraction/contracts/interfaces/UserOperation.sol";
-import { Base64URL } from "../../utils/Base64URL.sol";
-import "@account-abstraction/contracts/core/Helpers.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "../../EnclaveRegistry.sol";
-import "../../P256V.sol";
-import "../P256SmartAccountV1.sol";
 
 import "hardhat/console.sol";
 
@@ -34,12 +26,6 @@ contract SimpleSessionKeyValidator is IValidator {
     uint8 constant STATUS_ENABLED = 1;
     uint8 constant STATUS_EXPIRED = 2;
     uint8 constant STATUS_PREMATURE = 3;
-
-    EnclaveRegistry enclaveRegistry;
-
-    constructor (address _enclaveRegistry) {
-        enclaveRegistry = EnclaveRegistry(_enclaveRegistry);
-    }
 
     function onInstall(bytes calldata) external override {
         if (isInitialized(msg.sender)) revert AlreadyInitialized(msg.sender);
@@ -81,6 +67,11 @@ contract SimpleSessionKeyValidator is IValidator {
 
     function getSessionKeyStatus(address wallet, address sessionKey) public view returns (uint8) {
         SessionKeyData memory data = sessionKeys[wallet][sessionKey];
+
+        console.log("Session enabled: ", data.isEnabled);
+        console.log("Session start time: ", data.validAfter);
+        console.log("Session end time: ", data.validUntil);
+        console.log("Block time: ", block.timestamp);
         
         if (!data.isEnabled) return STATUS_DISABLED;
         if (block.timestamp > data.validUntil) return STATUS_EXPIRED;
