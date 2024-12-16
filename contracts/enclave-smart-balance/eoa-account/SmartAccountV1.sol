@@ -16,6 +16,8 @@ import "@account-abstraction/contracts/samples/callback/TokenCallbackHandler.sol
 import "../../enclave-smart-account/EnclaveRegistry.sol";
 import "../../enclave-smart-balance/interfaces/IEnclaveTokenVault.sol";
 
+import "./modules/EnclaveModuleManager.sol";
+
 import "hardhat/console.sol";
 /**
  * minimal account.
@@ -127,6 +129,12 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
     ) internal virtual override returns (uint256 validationData) {
         // Decode the validation mode and actual signature from userOp.signature
         (address validator, bytes memory actualSignature) = abi.decode(userOp.signature, (address, bytes));
+
+        // Check if module is enabled
+        require(
+            EnclaveModuleManager(EnclaveRegistry(enclaveRegistry).getRegistryAddress("moduleManager")).isModuleEnabled(validator),
+            "Module validation failed"
+        );
 
         // Create modified UserOperation with actual signature
         UserOperation memory modifiedUserOp = userOp;
