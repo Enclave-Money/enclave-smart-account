@@ -20,13 +20,8 @@ bytes4 constant ERC1271_INVALID = 0xffffffff;
 
 contract SessionKeyAdapter is IValidator {
     mapping(address => bool) internal isDisabled;
-    EnclaveRegistry enclaveRegistry;
 
     event RootUpdated(address indexed smartAccount, uint256 indexed timestamp);
-
-    constructor (address _enclaveRegistry) {
-        enclaveRegistry = EnclaveRegistry(_enclaveRegistry);
-    }
 
     function onInstall(bytes calldata) external override {
         if (isInitialized(msg.sender)) revert AlreadyInitialized(msg.sender);
