@@ -33,12 +33,21 @@ const config: HardhatUserConfig = {
     compilers: [
       {
         version: "0.8.9",
+        settings: {
+          viaIR: true,
+        }
       },
       {
         version: "0.8.10",
+        settings: {
+          viaIR: true,
+        }
       },
       {
         version: "0.8.20",
+        settings: {
+          viaIR: true,
+        }
       },
       {
         version: "0.8.21",
@@ -57,7 +66,8 @@ const config: HardhatUserConfig = {
       {
         version: "0.8.23",
         settings: {
-          optimizer: { enabled: true, runs: 100 }
+          optimizer: { enabled: true, runs: 100 },
+          viaIR: true,
         }
       },
       {

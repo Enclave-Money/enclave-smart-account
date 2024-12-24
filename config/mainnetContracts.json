@@ -16,7 +16,7 @@
     },
     "validators": {
       "P256": "0x5c9373E35Bd54E4eEeC5284AEA97f3419AdD3a6b",
-      "session": "0xAB4D0d9E924c8b1A7118743C765ee1820a4dce60",
+      "sessionAdapter": "0xAB4D0d9E924c8b1A7118743C765ee1820a4dce60",
       "simpleSession": "0xE583Dc8f5459Ebb61f289779e56B053C571B33ce",
       "smartBalanceConvert": "0x9e529DDC00E7d150aF53E8dE14503bCB39fd42f5",
       "smartAccountECDSA": "0xE9c7cE37eDcfAEb26023978d915361d5169b4Cd4"
@@ -46,7 +46,7 @@
     },
     "validators": {
       "P256": "0x5D470c5D14F1B771e1Fc4f67B398c0a59D425BAC",
-      "session": "0x20D0D4aB4bFaBcA8cbb5450Da18DD231573227B6",
+      "sessionAdapter": "0x20D0D4aB4bFaBcA8cbb5450Da18DD231573227B6",
       "simpleSession": "0x5110905eC162E48F4B5C269C6fb0fE1c3AD86aAE",
       "smartBalanceConvert": "0xc1D5A3f3a884588Abe830166281B76a15B7c8CB2",
       "smartAccountECDSA": "0xC5e14E0ceE95454488B9EcC885225C542e1C632C"
@@ -74,7 +74,7 @@
     },
     "validators": {
       "P256": "0x52B74358ef7c0C95E106FfCb2aDd6dFb8DF58aFb",
-      "session": "0x380D4BD3F9f10eA5D24eaA0b87b7BF04c7732391",
+      "sessionAdapter": "0x380D4BD3F9f10eA5D24eaA0b87b7BF04c7732391",
       "simpleSession": "0x8dfD91356c41BbEe12f6D8e658874D0EDe2C63ea",
       "smartBalanceConvert": "0x145f75d62EE0762d166295D2d4bffdF4fF41c0F8",
       "smartAccountECDSA": "0x02E991c16cC6941C64ea5462454729a338022694"
