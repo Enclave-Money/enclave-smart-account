@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Contract, Signer } from "ethers";
 
-describe("EnclaveVirtualLiquidityVaultS", function () {
+describe("EnclaveVirtualLiquidityVault", function () {
   let vault: Contract;
   let mockToken: Contract;
   let mockSocket: Contract;
@@ -44,7 +44,7 @@ describe("EnclaveVirtualLiquidityVaultS", function () {
     mockEntryPoint = await MockEntryPoint.deploy() as Contract;
 
     console.log("6. Deploying Vault...");
-    const Vault = await ethers.getContractFactory("EnclaveVirtualLiquidityVaultS");
+    const Vault = await ethers.getContractFactory("EnclaveVirtualLiquidityVault");
     //@ts-ignore
     vault = await Vault.deploy(
       addresses.owner,

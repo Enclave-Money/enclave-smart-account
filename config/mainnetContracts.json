@@ -27,6 +27,11 @@
     },
     "vaults": {
       "smartBalance": "0x11DCe5ef6E4ADD33c694611da2E205B87Edd23FE"
+    },
+    "socket": {
+      "switchboards": {
+        "FAST": "0xd5e829827F665c42326EAF68Da3360bd59b42f2f"
+      }
     }
   },
   "10": {
@@ -57,6 +62,11 @@
     },
     "vaults": {
       "smartBalance": "0x11DCe5ef6E4ADD33c694611da2E205B87Edd23FE"
+    },
+    "socket": {
+      "switchboards": {
+        "FAST": "0x09A6e77912a6bcFc3abfDfb841A85380Bb2A8B97"
+      }
     }
   },
   "8453": {
@@ -85,6 +95,11 @@
     },
     "vaults": {
       "smartBalance": "0x11DCe5ef6E4ADD33c694611da2E205B87Edd23FE"
+    },
+    "socket": {
+      "switchboards": {
+        "FAST": "0x957301825Dc21d4A92919C9E72dC9E6C6a29e7f8"
+      }
     }
   },
   "43114": {

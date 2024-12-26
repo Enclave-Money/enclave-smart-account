@@ -16,7 +16,7 @@ import "../../enclave-smart-account/EnclaveRegistry.sol";
 
 import "hardhat/console.sol";
 
-contract EnclaveVirtualLiquidityVaultS is ReentrancyGuard, BasePaymaster, EnclaveVaultManager, IPlug  {
+contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, EnclaveVaultManager, IPlug  {
 
     using ECDSA for bytes32;
     using UserOperationLib for UserOperation;
@@ -330,7 +330,7 @@ contract EnclaveVirtualLiquidityVaultS is ReentrancyGuard, BasePaymaster, Enclav
 
     function inbound(
         uint32 srcChainSlug_,
-        bytes calldata packet
+        bytes calldata _payload
     ) external payable onlySocket {
         console.log("Inbound function called");
         (
@@ -339,7 +339,7 @@ contract EnclaveVirtualLiquidityVaultS is ReentrancyGuard, BasePaymaster, Enclav
             uint256 amount,
             address receiverAddress
         ) = abi.decode(
-            packet,
+            _payload,
             (address, address, uint256, address)
         );
 
@@ -357,7 +357,7 @@ contract EnclaveVirtualLiquidityVaultS is ReentrancyGuard, BasePaymaster, Enclav
         deposits[tokenAddress][userAddress] -= amount;
         console.log("Updated deposits - new balance: %s", deposits[tokenAddress][userAddress]);
 
-        require(IERC20(tokenAddress).transfer(receiverAddress, amount), "Transfer failed");
+        deposits[tokenAddress][address(this)] += amount;
         console.log("Transfer successful");
 
         emit Claimed(receiverAddress, tokenAddress, amount, userAddress);
