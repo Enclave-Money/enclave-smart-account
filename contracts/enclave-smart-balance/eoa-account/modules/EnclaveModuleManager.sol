@@ -28,7 +28,7 @@ contract EnclaveModuleManager {
      * @dev Modifier to ensure only the registered module manager can call certain functions
      */
     modifier onlyModuleManager() {
-        if (msg.sender != enclaveRegistry.getRegistryAddress("moduleManager")) {
+        if (msg.sender != enclaveRegistry.getRegistryAddress("moduleManagerEoa")) {
             revert UnauthorizedCaller();
         }
         _;

@@ -45,7 +45,7 @@ contract XERC20 is ERC20, Ownable, IXERC20, ERC20Permit {
    * @param _user The address of the user who needs tokens minted
    * @param _amount The amount of tokens being minted
    */
-  function mint(address _user, uint256 _amount) public {
+  function mint(address _user, uint256 _amount) public virtual {
     _mintWithCaller(msg.sender, _user, _amount);
   }
 

@@ -20,6 +20,10 @@ export const REGISTRY_KEYS = {
   // Smart Balance System
   SMART_BALANCE_VAULT: "smartBalanceVault",
   SMART_BALANCE_CONVERSION_MANAGER: "smartBalanceConversionManager",
+
+  // Module manager
+  MODULE_MANAGER: "moduleManager",
+  MODULE_MANAGER_EOA: "moduleManagerEoa"
 } as const;
 
 // Type for type-safety when using keys
