@@ -65,8 +65,6 @@ contract EnclaveGasPaymaster is BasePaymaster {
     ) external onlyOwner {
         // Decode organization data
         (bytes32 orgId, address fundingAddress, address signingAddress) = abi.decode(_data, (bytes32, address, address));
-
-        bool isReg = registeredOrganizations[orgId];
         // Include nonce in message hash
         bytes32 messageHash = getRegistrationHash(orgId, fundingAddress, signingAddress);
         bytes32 signedHash = ECDSA.toEthSignedMessageHash(messageHash);
@@ -96,7 +94,7 @@ contract EnclaveGasPaymaster is BasePaymaster {
     }
 
     // Override deposit to handle organization deposits
-    function deposit() public payable override {
+    function orgDeposit() public payable {
         bytes32 orgId = fundingAddressToOrg[msg.sender];
         require(orgId != bytes32(0), "Not a registered funding address");
         
@@ -107,7 +105,7 @@ contract EnclaveGasPaymaster is BasePaymaster {
     }
 
     // Override withdrawTo to handle organization withdrawals
-    function withdrawTo(address payable withdrawAddress, uint256 amount) public override {
+    function orgWithdraw(address payable withdrawAddress, uint256 amount) public {
         bytes32 orgId = fundingAddressToOrg[msg.sender];
         require(orgId != bytes32(0), "Not a registered funding address");
         require(organizationBalances[orgId] >= amount, "Insufficient organization balance");
