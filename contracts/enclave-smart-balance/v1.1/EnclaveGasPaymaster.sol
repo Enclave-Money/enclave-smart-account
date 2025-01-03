@@ -12,8 +12,6 @@ contract EnclaveGasPaymaster is BasePaymaster {
     using ECDSA for bytes32;
     using UserOperationLib for UserOperation;
 
-    address public immutable verifyingSigner;
-
     uint256 private constant VALID_TIMESTAMP_OFFSET = 20;
 
     uint256 private constant SIGNATURE_OFFSET = 116;
@@ -39,9 +37,7 @@ contract EnclaveGasPaymaster is BasePaymaster {
     event OrganizationWithdrawal(bytes32 indexed orgId, uint256 amount);
     event TransactionSponsored(bytes32 indexed orgId, address indexed sender, uint256 actualGasCost);
 
-    constructor(IEntryPoint _entryPoint, address _verifyingSigner) BasePaymaster(_entryPoint) {
-        verifyingSigner = _verifyingSigner;
-    }
+    constructor(IEntryPoint _entryPoint) BasePaymaster(_entryPoint) {}
 
     mapping(address => uint256) public senderNonce;
 
@@ -109,7 +105,7 @@ contract EnclaveGasPaymaster is BasePaymaster {
         bytes32 _orgId,
         address _newSigningAddress
     ) external {
-        require(msg.sender == owner() || msg.sender == verifyingSigner, "Unauthorized");
+        require(msg.sender == owner(), "Unauthorized");
         orgToSigningAddress[_orgId] = _newSigningAddress;
         signingAddressToOrg[_newSigningAddress] = _orgId;
     }

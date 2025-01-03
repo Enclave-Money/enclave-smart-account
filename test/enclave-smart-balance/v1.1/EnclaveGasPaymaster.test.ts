@@ -1,12 +1,10 @@
 const { expect } = require("chai");
 import { ethers } from "hardhat";
 import { AbiCoder } from "ethers";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("EnclaveGasPaymaster", function () {
   let paymaster: any;
   let owner: any;
-  let verifyingSigner: any;
   let fundingAddress: any;
   let signingAddress: any;
   let user: any;
@@ -16,7 +14,7 @@ describe("EnclaveGasPaymaster", function () {
   const abiCoder = new AbiCoder();
 
   beforeEach(async function () {
-    [owner, verifyingSigner, fundingAddress, signingAddress, user] = await ethers.getSigners();
+    [owner, fundingAddress, signingAddress, user] = await ethers.getSigners();
 
     // Deploy EntryPoint
     const EntryPoint = await ethers.getContractFactory("EntryPoint");
@@ -24,7 +22,7 @@ describe("EnclaveGasPaymaster", function () {
 
     // Deploy EnclaveGasPaymaster
     const PaymasterFactory = await ethers.getContractFactory("EnclaveGasPaymaster");
-    paymaster = await PaymasterFactory.deploy(entryPoint, verifyingSigner.address);
+    paymaster = await PaymasterFactory.deploy(entryPoint);
     // await time.setNextBlockTimestamp(Math.floor(Date.now() / 1000));
   });
 
