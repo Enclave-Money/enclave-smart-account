@@ -6,6 +6,7 @@ pragma solidity ^0.8.12;
 
 import "@account-abstraction/contracts/core/BasePaymaster.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "hardhat/console.sol";
 
 contract EnclaveGasPaymaster is BasePaymaster {
     using ECDSA for bytes32;
@@ -15,7 +16,7 @@ contract EnclaveGasPaymaster is BasePaymaster {
 
     uint256 private constant VALID_TIMESTAMP_OFFSET = 20;
 
-    uint256 private constant SIGNATURE_OFFSET = 84;
+    uint256 private constant SIGNATURE_OFFSET = 116;
 
     // Modified state variables
     mapping(bytes32 => uint256) public organizationBalances;
@@ -50,12 +51,20 @@ contract EnclaveGasPaymaster is BasePaymaster {
         address fundingAddress,
         address signingAddress
     ) public view returns (bytes32) {
-        return keccak256(abi.encode(
+        console.log("Getting registration hash for:");
+        console.log("  orgId:", uint256(orgId));
+        console.log("  fundingAddress:", fundingAddress);
+        console.log("  signingAddress:", signingAddress);
+        console.log("  nonce:", fundingAddressNonces[fundingAddress]);
+        
+        bytes32 hash = keccak256(abi.encode(
             orgId,
             fundingAddress,
             signingAddress,
             fundingAddressNonces[fundingAddress]
         ));
+        console.log("Calculated hash:", uint256(hash));
+        return hash;
     }
 
     // Modified registration function
@@ -63,17 +72,29 @@ contract EnclaveGasPaymaster is BasePaymaster {
         bytes calldata _data,
         bytes calldata _signature
     ) external onlyOwner {
+        console.log("Registering organization");
+        
         // Decode organization data
         (bytes32 orgId, address fundingAddress, address signingAddress) = abi.decode(_data, (bytes32, address, address));
+        console.log("Decoded data:");
+        console.log("  orgId:", uint256(orgId));
+        console.log("  fundingAddress:", fundingAddress);
+        console.log("  signingAddress:", signingAddress);
+        
         // Include nonce in message hash
         bytes32 messageHash = getRegistrationHash(orgId, fundingAddress, signingAddress);
         bytes32 signedHash = ECDSA.toEthSignedMessageHash(messageHash);
         
-        require(fundingAddress == ECDSA.recover(signedHash, _signature), "Invalid signature");
+        address recoveredAddress = ECDSA.recover(signedHash, _signature);
+        console.log("Recovered signer:", recoveredAddress);
+        console.log("Expected signer:", fundingAddress);
+        
+        require(fundingAddress == recoveredAddress, "Invalid signature");
 
-        // Increment nonce after successful verification
+        console.log("Incrementing nonce for funding address");
         fundingAddressNonces[fundingAddress]++;
 
+        console.log("Setting organization mappings");
         registeredOrganizations[orgId] = true;
         orgToSigningAddress[orgId] = signingAddress;
         orgToFundingAddress[orgId] = fundingAddress;
@@ -172,21 +193,43 @@ contract EnclaveGasPaymaster is BasePaymaster {
         override
         returns (bytes memory context, uint256 validationData)
     {
-        (requiredPreFund);
+        console.log("Validating paymaster user operation");
+        console.log("Required pre-fund:", requiredPreFund);
 
         (uint48 validUntil, uint48 validAfter, bytes32 orgId, bytes calldata signature) =
             parsePaymasterAndData(userOp.paymasterAndData);
+        
+        console.log("Parsed paymaster data:");
+        console.log("  orgId:", uint256(orgId));
+        console.log("  validUntil:", validUntil);
+        console.log("  validAfter:", validAfter);
+        console.log("  blocktime: ", block.timestamp);
+
+        // Timestamp validation
+        if (block.timestamp > validUntil || block.timestamp < validAfter) {
+            console.log("Timestamp validation failed");
+            console.log("Current timestamp:", block.timestamp);
+            return ("", _packValidationData(true, validUntil, validAfter));
+        }
 
         require(registeredOrganizations[orgId], "Organization not registered");
+        
+        console.log("Organization balance:", organizationBalances[orgId]);
         require(organizationBalances[orgId] >= requiredPreFund, "Insufficient organization balance");
 
         bytes32 hash = ECDSA.toEthSignedMessageHash(getHash(userOp, validUntil, validAfter));
         senderNonce[userOp.getSender()]++;
 
-        if (orgToSigningAddress[orgId] != ECDSA.recover(hash, signature)) {
+        address recoveredSigner = ECDSA.recover(hash, signature);
+        console.log("Recovered signer:", recoveredSigner);
+        console.log("Expected signer:", orgToSigningAddress[orgId]);
+
+        if (orgToSigningAddress[orgId] != recoveredSigner) {
+            console.log("Invalid signature");
             return ("", _packValidationData(true, validUntil, validAfter));
         }
 
+        console.log("Validation successful");
         return (abi.encode(orgId), _packValidationData(false, validUntil, validAfter));
     }
 
@@ -203,12 +246,22 @@ contract EnclaveGasPaymaster is BasePaymaster {
 
     // Modified postOp function
     function _postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost) internal override {
+        console.log("Processing post-operation");
+        console.log("Mode:", uint256(mode));
+        console.log("Actual gas cost:", actualGasCost);
+        
         if (mode == PostOpMode.postOpReverted) {
+            console.log("Operation reverted, skipping");
             return;
         }
         
         bytes32 orgId = abi.decode(context, (bytes32));
+        console.log("Organization ID:", uint256(orgId));
+        console.log("Previous balance:", organizationBalances[orgId]);
+        
         organizationBalances[orgId] -= actualGasCost;
+        console.log("New balance:", organizationBalances[orgId]);
+        
         emit TransactionSponsored(orgId, msg.sender, actualGasCost);
     }
 }
