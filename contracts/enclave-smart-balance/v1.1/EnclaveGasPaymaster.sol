@@ -36,6 +36,16 @@ contract EnclaveGasPaymaster is BasePaymaster {
     event OrganizationDeposit(bytes32 indexed orgId, uint256 amount);
     event OrganizationWithdrawal(bytes32 indexed orgId, uint256 amount);
     event TransactionSponsored(bytes32 indexed orgId, address indexed sender, uint256 actualGasCost);
+    event OrganizationSigningAddressUpdated(
+        bytes32 indexed orgId,
+        address indexed oldSigningAddress,
+        address indexed newSigningAddress
+    );
+    event OrganizationFundingAddressUpdated(
+        bytes32 indexed orgId,
+        address indexed oldFundingAddress,
+        address indexed newFundingAddress
+    );
 
     constructor(IEntryPoint _entryPoint) BasePaymaster(_entryPoint) {}
 
@@ -65,55 +75,77 @@ contract EnclaveGasPaymaster is BasePaymaster {
 
     // Modified registration function
     function registerOrganization(
-        bytes calldata _data,
-        bytes calldata _signature
-    ) external onlyOwner {
+        bytes32 orgId,
+        address signingAddress
+    ) external {
         console.log("Registering organization");
         
+        // Prevent duplicate registrations
+        require(!registeredOrganizations[orgId], "Organization ID already registered");
+        require(signingAddress != address(0), "Invalid address");
+        
+        // Prevent duplicate funding and signing addresses
+        require(fundingAddressToOrg[msg.sender] == bytes32(0), "Funding address already in use");
+        require(signingAddressToOrg[signingAddress] == bytes32(0), "Signing address already in use");
+        
         // Decode organization data
-        (bytes32 orgId, address fundingAddress, address signingAddress) = abi.decode(_data, (bytes32, address, address));
         console.log("Decoded data:");
         console.log("  orgId:", uint256(orgId));
-        console.log("  fundingAddress:", fundingAddress);
+        console.log("  fundingAddress:", msg.sender);
         console.log("  signingAddress:", signingAddress);
-        
-        // Include nonce in message hash
-        bytes32 messageHash = getRegistrationHash(orgId, fundingAddress, signingAddress);
-        bytes32 signedHash = ECDSA.toEthSignedMessageHash(messageHash);
-        
-        address recoveredAddress = ECDSA.recover(signedHash, _signature);
-        console.log("Recovered signer:", recoveredAddress);
-        console.log("Expected signer:", fundingAddress);
-        
-        require(fundingAddress == recoveredAddress, "Invalid signature");
-
-        console.log("Incrementing nonce for funding address");
-        fundingAddressNonces[fundingAddress]++;
 
         console.log("Setting organization mappings");
         registeredOrganizations[orgId] = true;
         orgToSigningAddress[orgId] = signingAddress;
-        orgToFundingAddress[orgId] = fundingAddress;
+        orgToFundingAddress[orgId] = msg.sender;
         signingAddressToOrg[signingAddress] = orgId;
-        fundingAddressToOrg[fundingAddress] = orgId;
+        fundingAddressToOrg[msg.sender] = orgId;
         
-        emit OrganizationRegistered(orgId, signingAddress, fundingAddress);
+        emit OrganizationRegistered(orgId, signingAddress, msg.sender);
+    }
+
+    function updateOrgFundingAddress(
+        address newFundingAddress
+    ) external {
+        require(newFundingAddress != address(0), "Invalid address");
+        require(fundingAddressToOrg[newFundingAddress] == bytes32(0), "Funding address already registered");
+
+        bytes32 orgId = fundingAddressToOrg[msg.sender];
+
+        require(orgId != bytes32(0), "Sender not valid funding address");
+
+        // Clear old mapping before setting new one
+        delete fundingAddressToOrg[msg.sender];
+        orgToFundingAddress[orgId] = newFundingAddress;
+        fundingAddressToOrg[newFundingAddress] = orgId;
+
+        emit OrganizationFundingAddressUpdated(orgId, msg.sender, newFundingAddress);
     }
 
     // Update the updateOrgSigningAddress function
     function updateOrgSigningAddress(
-        bytes32 _orgId,
-        address _newSigningAddress
+        bytes32 orgId,
+        address newSigningAddress
     ) external {
         require(msg.sender == owner(), "Unauthorized");
-        orgToSigningAddress[_orgId] = _newSigningAddress;
-        signingAddressToOrg[_newSigningAddress] = _orgId;
+        require(newSigningAddress != address(0), "Invalid address");
+        require(signingAddressToOrg[newSigningAddress] == bytes32(0), "Signing address already registered");
+        require(registeredOrganizations[orgId], "Organization not found");
+        
+        address oldSigningAddress = orgToSigningAddress[orgId];
+        // Clear old mapping before setting new one
+        delete signingAddressToOrg[oldSigningAddress];
+        orgToSigningAddress[orgId] = newSigningAddress;
+        signingAddressToOrg[newSigningAddress] = orgId;
+
+        emit OrganizationSigningAddressUpdated(orgId, oldSigningAddress, newSigningAddress);
     }
 
     // Override deposit to handle organization deposits
     function orgDeposit() public payable {
         bytes32 orgId = fundingAddressToOrg[msg.sender];
         require(orgId != bytes32(0), "Not a registered funding address");
+        require(msg.value > 0, "Invalid amount");
         
         organizationBalances[orgId] += msg.value;
         entryPoint.depositTo{value : msg.value}(address(this));
@@ -125,7 +157,7 @@ contract EnclaveGasPaymaster is BasePaymaster {
     function orgWithdraw(address payable withdrawAddress, uint256 amount) public {
         bytes32 orgId = fundingAddressToOrg[msg.sender];
         require(orgId != bytes32(0), "Not a registered funding address");
-        require(organizationBalances[orgId] >= amount, "Insufficient organization balance");
+        require(organizationBalances[orgId] >= amount, "Insufficient balance");
         
         organizationBalances[orgId] -= amount;
         entryPoint.withdrawTo(withdrawAddress, amount);
