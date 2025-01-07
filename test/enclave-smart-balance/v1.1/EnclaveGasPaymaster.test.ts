@@ -28,9 +28,10 @@ describe("EnclaveGasPaymaster", function () {
 
   describe("Organization Registration", function () {
     it("should register a new organization correctly", async function () {
-      await expect(paymaster.connect(fundingAddress).registerOrganization(
+      await expect(paymaster.connect(owner).registerOrganization(
         orgId,
-        signingAddress.address
+        signingAddress.address,
+        fundingAddress.address
       ))
         .to.emit(paymaster, "OrganizationRegistered")
         .withArgs(orgId, signingAddress.address, fundingAddress.address);
@@ -41,32 +42,36 @@ describe("EnclaveGasPaymaster", function () {
     });
 
     it("should not allow registering same organization twice", async function () {
-      await paymaster.connect(fundingAddress).registerOrganization(
+      await paymaster.connect(owner).registerOrganization(
         orgId,
-        signingAddress.address
+        signingAddress.address,
+        fundingAddress.address
       );
 
       await expect(
-        paymaster.connect(fundingAddress).registerOrganization(
+        paymaster.connect(owner).registerOrganization(
           orgId,
-          signingAddress.address
+          signingAddress.address,
+          fundingAddress.address
         )
       ).to.be.revertedWith("Organization ID already registered");
     });
 
     it("should not allow zero address as signing address", async function () {
       await expect(
-        paymaster.connect(fundingAddress).registerOrganization(
+        paymaster.connect(owner).registerOrganization(
           orgId,
-          ethers.ZeroAddress
+          ethers.ZeroAddress,
+          fundingAddress.address
         )
       ).to.be.revertedWith("Invalid address");
     });
 
     it("should properly map addresses to organization", async function () {
-      await paymaster.connect(fundingAddress).registerOrganization(
+      await paymaster.connect(owner).registerOrganization(
         orgId,
-        signingAddress.address
+        signingAddress.address,
+        fundingAddress.address
       );
 
       expect(await paymaster.signingAddressToOrg(signingAddress.address)).to.equal(orgId);
@@ -75,32 +80,36 @@ describe("EnclaveGasPaymaster", function () {
 
     it("should not allow registering with funding address already in use", async function () {
       // Register first organization
-      await paymaster.connect(fundingAddress).registerOrganization(
+      await paymaster.connect(owner).registerOrganization(
         orgId,
-        signingAddress.address
+        signingAddress.address,
+        fundingAddress.address
       );
 
       const otherOrgId = ethers.id("other-organization");
       await expect(
-        paymaster.connect(fundingAddress).registerOrganization(
+        paymaster.connect(owner).registerOrganization(
           otherOrgId,
-          signingAddress.address
+          fundingAddress.address,
+          fundingAddress.address
         )
       ).to.be.revertedWith("Funding address already in use");
     });
 
     it("should not allow registering with signing address already in use", async function () {
       // Register first organization
-      await paymaster.connect(fundingAddress).registerOrganization(
+      await paymaster.connect(owner).registerOrganization(
         orgId,
-        signingAddress.address
+        signingAddress.address,
+        fundingAddress.address
       );
 
       const otherOrgId = ethers.id("other-organization");
       const otherFunder = user; // Using user as another funding address
       await expect(
-        paymaster.connect(otherFunder).registerOrganization(
+        paymaster.connect(owner).registerOrganization(
           otherOrgId,
+          signingAddress.address,
           signingAddress.address
         )
       ).to.be.revertedWith("Signing address already in use");
@@ -110,9 +119,10 @@ describe("EnclaveGasPaymaster", function () {
   describe("Deposits and Withdrawals", function () {
     beforeEach(async function () {
       // Register organization first
-      await paymaster.connect(fundingAddress).registerOrganization(
+      await paymaster.connect(owner).registerOrganization(
         orgId,
-        signingAddress.address
+        signingAddress.address,
+        fundingAddress.address
       );
     });
 
@@ -194,9 +204,10 @@ describe("EnclaveGasPaymaster", function () {
       validAfter = currentBlockTime;
 
       // Register organization
-      await paymaster.connect(fundingAddress).registerOrganization(
+      await paymaster.connect(owner).registerOrganization(
         orgId,
-        signingAddress.address
+        signingAddress.address,
+        fundingAddress.address
       );
 
       // Fund organization
@@ -377,9 +388,10 @@ describe("EnclaveGasPaymaster", function () {
   describe("Post-operation Processing", function () {
     it("should correctly process successful operation", async function () {
       // Register organization first
-      await paymaster.connect(fundingAddress).registerOrganization(
+      await paymaster.connect(owner).registerOrganization(
         orgId,
-        signingAddress.address
+        signingAddress.address,
+        fundingAddress.address
       );
 
       const depositAmount = ethers.parseEther("1.0");
@@ -415,17 +427,18 @@ describe("EnclaveGasPaymaster", function () {
   describe("Organization Address Updates", function () {
     beforeEach(async function () {
       // Register organization first
-      await paymaster.connect(fundingAddress).registerOrganization(
+      await paymaster.connect(owner).registerOrganization(
         orgId,
-        signingAddress.address
+        signingAddress.address,
+        fundingAddress.address
       );
     });
 
     describe("Funding Address Updates", function () {
-      it("should allow previous funding address to update to new address", async function () {
+      it("should allow owner to update to new address", async function () {
         const newFundingAddress = user;
         
-        await expect(paymaster.connect(fundingAddress).updateOrgFundingAddress(newFundingAddress.address))
+        await expect(paymaster.connect(owner).updateOrgFundingAddress(orgId, newFundingAddress.address))
           .to.emit(paymaster, "OrganizationFundingAddressUpdated")
           .withArgs(orgId, fundingAddress.address, newFundingAddress.address);
 
@@ -434,18 +447,25 @@ describe("EnclaveGasPaymaster", function () {
         expect(await paymaster.fundingAddressToOrg(fundingAddress.address)).to.equal(ethers.ZeroHash);
       });
 
-      it("should not allow non-previous funding address to update funding address", async function () {
+      it("should not allow non-owner to update funding address", async function () {
         const newFundingAddress = user;
         
         await expect(
-          paymaster.connect(owner).updateOrgFundingAddress(newFundingAddress.address)
-        ).to.be.revertedWith("Sender not valid funding address");
+          paymaster.connect(fundingAddress).updateOrgFundingAddress(orgId, newFundingAddress.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("should not allow update to zero address", async function () {
         await expect(
-          paymaster.connect(fundingAddress).updateOrgFundingAddress(ethers.ZeroAddress)
+          paymaster.connect(owner).updateOrgFundingAddress(orgId, ethers.ZeroAddress)
         ).to.be.revertedWith("Invalid address");
+      });
+
+      it("should not allow update for non-existent organization", async function () {
+        const nonExistentOrgId = ethers.id("non-existent-org");
+        await expect(
+          paymaster.connect(owner).updateOrgFundingAddress(nonExistentOrgId, user.address)
+        ).to.be.revertedWith("Organization not found");
       });
 
       it("should not allow update to an address already used by another organization", async function () {
@@ -454,14 +474,15 @@ describe("EnclaveGasPaymaster", function () {
         const otherFunding = user;
         const otherSigning = owner;
         
-        await paymaster.connect(otherFunding).registerOrganization(
+        await paymaster.connect(owner).registerOrganization(
           otherOrgId,
-          otherSigning.address
+          otherSigning.address,
+          otherFunding.address
         );
 
         // Try to update first org's funding address to second org's funding address
         await expect(
-          paymaster.connect(fundingAddress).updateOrgFundingAddress(otherFunding.address)
+          paymaster.connect(owner).updateOrgFundingAddress(orgId, otherFunding.address)
         ).to.be.revertedWith("Funding address already registered");
       });
     });
@@ -484,7 +505,7 @@ describe("EnclaveGasPaymaster", function () {
         
         await expect(
           paymaster.connect(fundingAddress).updateOrgSigningAddress(orgId, newSigningAddress.address)
-        ).to.be.revertedWith("Unauthorized");
+        ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("should not allow update to zero address", async function () {
@@ -499,9 +520,10 @@ describe("EnclaveGasPaymaster", function () {
         const otherFunding = user;
         const otherSigning = owner;
         
-        await paymaster.connect(otherFunding).registerOrganization(
+        await paymaster.connect(owner).registerOrganization(
           otherOrgId,
-          otherSigning.address
+          otherSigning.address,
+          otherFunding.address
         );
 
         // Try to update first org's signing address to second org's signing address

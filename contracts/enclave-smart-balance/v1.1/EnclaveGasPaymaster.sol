@@ -51,88 +51,69 @@ contract EnclaveGasPaymaster is BasePaymaster {
 
     mapping(address => uint256) public senderNonce;
 
-    // Add function to get registration hash
-    function getRegistrationHash(
-        bytes32 orgId,
-        address fundingAddress,
-        address signingAddress
-    ) public view returns (bytes32) {
-        console.log("Getting registration hash for:");
-        console.log("  orgId:", uint256(orgId));
-        console.log("  fundingAddress:", fundingAddress);
-        console.log("  signingAddress:", signingAddress);
-        console.log("  nonce:", fundingAddressNonces[fundingAddress]);
-        
-        bytes32 hash = keccak256(abi.encode(
-            orgId,
-            fundingAddress,
-            signingAddress,
-            fundingAddressNonces[fundingAddress]
-        ));
-        console.log("Calculated hash:", uint256(hash));
-        return hash;
-    }
-
     // Modified registration function
     function registerOrganization(
         bytes32 orgId,
-        address signingAddress
-    ) external {
+        address signingAddress,
+        address fundingAddress
+    ) external onlyOwner() {
         console.log("Registering organization");
         
         // Prevent duplicate registrations
         require(!registeredOrganizations[orgId], "Organization ID already registered");
         require(signingAddress != address(0), "Invalid address");
+        require(fundingAddress != address(0), "Invalid address");
         
         // Prevent duplicate funding and signing addresses
-        require(fundingAddressToOrg[msg.sender] == bytes32(0), "Funding address already in use");
+        require(fundingAddressToOrg[fundingAddress] == bytes32(0), "Funding address already in use");
         require(signingAddressToOrg[signingAddress] == bytes32(0), "Signing address already in use");
         
         // Decode organization data
         console.log("Decoded data:");
         console.log("  orgId:", uint256(orgId));
-        console.log("  fundingAddress:", msg.sender);
+        console.log("  fundingAddress:", fundingAddress);
         console.log("  signingAddress:", signingAddress);
 
         console.log("Setting organization mappings");
         registeredOrganizations[orgId] = true;
         orgToSigningAddress[orgId] = signingAddress;
-        orgToFundingAddress[orgId] = msg.sender;
+        orgToFundingAddress[orgId] = fundingAddress;
         signingAddressToOrg[signingAddress] = orgId;
-        fundingAddressToOrg[msg.sender] = orgId;
+        fundingAddressToOrg[fundingAddress] = orgId;
         
-        emit OrganizationRegistered(orgId, signingAddress, msg.sender);
+        emit OrganizationRegistered(orgId, signingAddress, fundingAddress);
     }
 
     function updateOrgFundingAddress(
+        bytes32 orgId,
         address newFundingAddress
-    ) external {
+    ) external onlyOwner() {
         require(newFundingAddress != address(0), "Invalid address");
         require(fundingAddressToOrg[newFundingAddress] == bytes32(0), "Funding address already registered");
-
-        bytes32 orgId = fundingAddressToOrg[msg.sender];
-
-        require(orgId != bytes32(0), "Sender not valid funding address");
+        require(registeredOrganizations[orgId], "Organization not found");
 
         // Clear old mapping before setting new one
-        delete fundingAddressToOrg[msg.sender];
+        address oldFundingAddress = orgToFundingAddress[orgId];
+
+        delete fundingAddressToOrg[oldFundingAddress];
+
         orgToFundingAddress[orgId] = newFundingAddress;
         fundingAddressToOrg[newFundingAddress] = orgId;
 
-        emit OrganizationFundingAddressUpdated(orgId, msg.sender, newFundingAddress);
+        emit OrganizationFundingAddressUpdated(orgId, oldFundingAddress, newFundingAddress);
     }
 
     // Update the updateOrgSigningAddress function
     function updateOrgSigningAddress(
         bytes32 orgId,
         address newSigningAddress
-    ) external {
-        require(msg.sender == owner(), "Unauthorized");
+    ) external onlyOwner() {
         require(newSigningAddress != address(0), "Invalid address");
         require(signingAddressToOrg[newSigningAddress] == bytes32(0), "Signing address already registered");
         require(registeredOrganizations[orgId], "Organization not found");
         
         address oldSigningAddress = orgToSigningAddress[orgId];
+
         // Clear old mapping before setting new one
         delete signingAddressToOrg[oldSigningAddress];
         orgToSigningAddress[orgId] = newSigningAddress;
