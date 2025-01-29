@@ -1,0 +1,30 @@
+{
+    "11155420": {
+        "socket": {
+            "socket": "0xCF8dc30B0c79eA64D6D82f0bb9258176E88004C6",
+            "switchboard": "0xeDA3cFD23DA02CB14E36125c2E8709a4574D9f04",
+            "plug": "0xC346BFBd8Ab8b8bf15f1B7e71a25b4001F715317"
+        },
+        "usdc": "0x45C0f757D4eABc8E636DE4C92d68E0474C1F1D12",
+        "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"
+    },
+    "421614": {
+        "socket": {
+            "socket": "0x5798C2D27Db969fda2E43dE0871C21823E6418B8",
+            "switchboard": "0x545549DF14D755af886168987f3be621D6Ed3FaD",
+            "plug": "0xA14e8efA8C14c3D529B0640c4526cec0263dB8Cd"
+        },
+        "usdc": "0xd3FE20E4A1306fFa717aB6fE6Dc13Ff1B6922853",
+        "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"
+    },
+    "911867": {
+        "socket": {
+            "socket": "0x5C4186D343EeF952c9ED886E45F8243edf0A503F",
+            "switchboard": "0xe1e0d782E3b4985f1d657f77B683897AeA6b7dC9",
+            "plug": "0xa99a02cD010FcCd22bfEd6dE9f2F6292dfa46aa5"
+        },
+        "usdc": "0x9c6c2ac4639303f034755171F07C4DBa3dF3232A",
+        "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+        "nft": "0x34C721C1c4419Fec2f406eAA4DB9b0213E82eA59"
+    }
+}

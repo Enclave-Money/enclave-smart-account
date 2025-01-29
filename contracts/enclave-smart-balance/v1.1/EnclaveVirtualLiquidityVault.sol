@@ -39,14 +39,17 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
     mapping(uint32 => address) public siblingPlugs;
 
     mapping(address => uint256) public withdrawNonce;
+    mapping(address => uint256) public claimNonce;
     mapping(bytes32 => bool) public usedClaimHashes;
+    mapping(bytes32 => bool) public settledTransactionIds;
 
     uint256 public settlementMessageGasLimit;
+    uint256 public settlementMaxBatchSize;
 
     event Deposited(address indexed user, address indexed tokenAddress, uint256 amount);
     event Withdrawn(address indexed user, address indexed tokenAddress, uint256 amount, address indexed vaultManager);
-    event SolverSponsored(address indexed user, address indexed tokenAddress, uint256 creditAmount, uint256 futureDebitAmount, address indexed paymaster, bytes reclaimPlan);
-    event Claimed(address indexed solver, address indexed tokenAddress, uint256 amount, address indexed owner);
+    event SolverSponsored(address indexed user, address indexed tokenAddress, uint256 creditAmount, uint256 futureDebitAmount, address indexed paymaster, bytes reclaimPlan, bytes32 transactionId);
+    event Claimed(address indexed solver, address indexed tokenAddress, uint256 amount, address indexed owner, bytes32 transactionId);
 
     address public socket;
     address public inboundSwitchBoard;   
@@ -58,6 +61,9 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
     uint256 private constant DEBIT_AMOUNT_OFFSET = 148;           // updated
     uint256 private constant SIGNATURE_OFFSET = 180;   
     uint256 private constant RECLAIM_PLAN_OFFSET = 245; // 65 Byte signature for ECDSA eth.sign
+
+    // Constant for NATIVE TOKEN address representation
+    address constant public NATIVE_ADDRESS = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     /**
      * @notice Initializes the EnclaveVitualLiquidityPaymaster contract
@@ -81,6 +87,8 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
         outboundSwitchBoard = _outboundSb;
         _transferOwnership(_manager);
         settlementMessageGasLimit = 100000;
+        settlementMaxBatchSize = 10;
+
     }
 
     modifier onlySocket () {
@@ -153,7 +161,7 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
 
         address sponsor = ECDSA.recover(hash, signature);
 
-        if (deposits[_tokenAddress][sponsor] < _amount) {
+        if (getVaultLiquidity(_tokenAddress) < _amount || !isVaultManager[sponsor]) {
             // Fail
             return ("", _packValidationData(true, validUntil, validAfter));
         }
@@ -193,54 +201,59 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
      */
 
     /**
-     * @notice Allows users to deposit ERC20 tokens into the vault
-     * @param _tokenAddress The ERC20 token contract address
+     * @notice Allows users to deposit ERC20 tokens or NATIVE TOKEN into the vault
+     * @param _tokenAddress The token contract address (NATIVE_ADDRESS for NATIVE TOKEN)
      * @param _amount Amount of tokens to deposit
-     * @dev Requires approval for token transfer
+     * @dev For NATIVE TOKEN, amount should match msg.value
      * @dev Updates deposits mapping
      * @dev Emits Deposited event
      */
-    function deposit(address _tokenAddress, uint256 _amount) public nonReentrant {
+    function deposit(address _tokenAddress, uint256 _amount) public payable nonReentrant {
         require(_tokenAddress != address(0), "Invalid token address");
         require(_amount > 0, "Amount must be greater than 0");
-        SafeERC20.safeTransferFrom(IERC20(_tokenAddress), msg.sender, address(this), _amount);
+
+        if (_tokenAddress == NATIVE_ADDRESS) {
+            require(msg.value == _amount, "NATIVE TOKEN amount mismatch");
+        } else {
+            SafeERC20.safeTransferFrom(IERC20(_tokenAddress), msg.sender, address(this), _amount);
+        }
+
         deposits[_tokenAddress][msg.sender] += _amount;
         totalDeposits[_tokenAddress] += _amount;
-
         emit Deposited(msg.sender, _tokenAddress, _amount);
     }
 
     /**
-     * @notice Withdraws tokens with a vault manager signature
-     * @param _tokenAddress Token to withdraw
+     * @notice Withdraws tokens or NATIVE TOKEN with a vault manager signature
+     * @param _tokenAddress Token to withdraw (NATIVE_ADDRESS for NATIVE TOKEN)
      * @param _amount Amount to withdraw
      * @param signature Vault manager's signature authorizing withdrawal
-     * @dev Verifies signature from valid vault manager
-     * @dev Updates deposits mapping
-     * @dev Emits Withdrawn event
      */
     function withdraw(address _tokenAddress, uint256 _amount, bytes calldata signature) external nonReentrant {
-        console.log("Withdraw called - token: %s, amount: %s", _tokenAddress, _amount);
         require(_tokenAddress != address(0), "Invalid token address");
         require(_amount > 0, "Amount must be greater than 0");
-        require(IERC20(_tokenAddress).balanceOf(address(this)) >= _amount, "Insufficient liquidity in vault");
         require(deposits[_tokenAddress][msg.sender] >= _amount, "Insufficient user balance");
-        console.log("Initial checks passed");
+        
+        if (_tokenAddress == NATIVE_ADDRESS) {
+            require(address(this).balance >= _amount, "Insufficient NATIVE TOKEN liquidity in vault");
+        } else {
+            require(IERC20(_tokenAddress).balanceOf(address(this)) >= _amount, "Insufficient token liquidity in vault");
+        }
 
         bytes32 hash = ECDSA.toEthSignedMessageHash(getWithdrawalHash(_tokenAddress, 0, _amount, msg.sender));        
         address signer = ECDSA.recover(hash, signature);
-        console.log("Recovered signer: %s", signer);
 
         require(isVaultManager[signer], "Invalid Signature");
-        console.log("Signature verified");
         
         deposits[_tokenAddress][msg.sender] -= _amount;
         totalDeposits[_tokenAddress] -= _amount;
 
-        console.log("Updated deposits");
-        
-        SafeERC20.safeTransfer(IERC20(_tokenAddress), msg.sender, _amount);
-        console.log("Transfer completed");
+        if (_tokenAddress == NATIVE_ADDRESS) {
+            (bool success, ) = msg.sender.call{value: _amount}("");
+            require(success, "NATIVE TOKEN transfer failed");
+        } else {
+            SafeERC20.safeTransfer(IERC20(_tokenAddress), msg.sender, _amount);
+        }
 
         withdrawNonce[msg.sender]++;
 
@@ -248,48 +261,61 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
     }
 
     /**
-     * @notice Deposits all available balance of a specific token
-     * @param _tokenAddress The ERC20 token contract address
-     * @dev Transfers entire token balance from sender
+     * @notice Deposits all available balance of a specific token or NATIVE TOKEN
+     * @param _tokenAddress The token contract address (NATIVE TOKEN_ADDRESS for NATIVE TOKEN)
+     * @dev For NATIVE TOKEN, transfers entire msg.value
+     * @dev For tokens, transfers entire token balance from sender
      * @dev Updates deposits mapping
      * @dev Emits Deposited event
      */
-    function depositAll(address _tokenAddress) external nonReentrant {
+    function depositAll(address _tokenAddress) external payable nonReentrant {
         require(_tokenAddress != address(0), "Invalid token address");
-        IERC20 token = IERC20(_tokenAddress);
-        uint256 balance = token.balanceOf(msg.sender);
-
-        deposit(_tokenAddress, balance);
+        
+        if (_tokenAddress == NATIVE_ADDRESS) {
+            require(msg.value > 0, "No NATIVE TOKEN sent");
+            deposits[_tokenAddress][msg.sender] += msg.value;
+            totalDeposits[_tokenAddress] += msg.value;
+            emit Deposited(msg.sender, _tokenAddress, msg.value);
+        } else {
+            IERC20 token = IERC20(_tokenAddress);
+            uint256 balance = token.balanceOf(msg.sender);
+            require(balance > 0, "No tokens to deposit");
+            
+            SafeERC20.safeTransferFrom(token, msg.sender, address(this), balance);
+            deposits[_tokenAddress][msg.sender] += balance;
+            totalDeposits[_tokenAddress] += balance;
+            emit Deposited(msg.sender, _tokenAddress, balance);
+        }
     }
 
     /**
-     * @notice Withdraws all deposited tokens with manager signature
-     * @param _tokenAddress Token to withdraw
+     * @notice Withdraws all deposited tokens or NATIVE TOKEN with manager signature
+     * @param _tokenAddress Token to withdraw (NATIVE TOKEN_ADDRESS for NATIVE TOKEN)
      * @param signature Vault manager's signature authorizing withdrawal
      * @dev Verifies signature from valid vault manager
      * @dev Sets user's deposit to zero
      * @dev Emits Withdrawn event
      */
     function withdrawAll(address _tokenAddress, bytes calldata signature) external nonReentrant {
-        console.log("WithdrawAll called - token: %s", _tokenAddress);
         require(_tokenAddress != address(0), "Invalid token address");
         uint256 balance = deposits[_tokenAddress][msg.sender];
-        console.log("User balance: %s", balance);
-        require(balance >= 0, "Insufficient balance");
+        console.log("WITHDRAW ALL :: ", msg.sender, " :: ", balance);
+        require(balance > 0, "Insufficient balance");
 
         bytes32 hash = ECDSA.toEthSignedMessageHash(getWithdrawalHash(_tokenAddress, 1, 0, msg.sender));        
         address signer = ECDSA.recover(hash, signature);
-        console.log("Recovered signer: %s", signer);
 
         require(isVaultManager[signer], "Invalid Signature");
-        console.log("Signature verified");
 
         deposits[_tokenAddress][msg.sender] = 0;
         totalDeposits[_tokenAddress] -= balance;
-        console.log("Updated deposits");
-        
-        require(IERC20(_tokenAddress).transfer(msg.sender, balance), "Transfer failed");
-        console.log("Transfer completed");
+
+        if (_tokenAddress == NATIVE_ADDRESS) {
+            (bool success, ) = msg.sender.call{value: balance}("");
+            require(success, "NATIVE TOKEN transfer failed");
+        } else {
+            SafeERC20.safeTransfer(IERC20(_tokenAddress), msg.sender, balance);
+        }
 
         withdrawNonce[msg.sender]++;
 
@@ -297,15 +323,33 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
     }
 
     function getVaultLiquidity(address _tokenAddress) public view returns (uint256) {
+        if (_tokenAddress == NATIVE_ADDRESS) {
+            require(address(this).balance >= totalDeposits[NATIVE_ADDRESS], "Arithmetic underflow: ETH balance");
+            return address(this).balance - totalDeposits[NATIVE_ADDRESS];
+        }
         uint256 vaultBalance = IERC20(_tokenAddress).balanceOf(address(this));
+        require(vaultBalance >= totalDeposits[_tokenAddress], "Arithmetic underflow: Token balance");
         return vaultBalance - totalDeposits[_tokenAddress];
     }
 
+    /**
+     * @notice Allows vault manager to withdraw excess tokens or ETH
+     * @param _tokenAddress The token address (ETH_ADDRESS for ETH)
+     * @param _amount Amount to withdraw
+     * @dev Only callable by vault manager
+     * @dev Checks available liquidity before withdrawal
+     */
     function withdrawToken(address _tokenAddress, uint256 _amount) external onlyVaultManager {
         require(_amount > 0, "Solver withdrawal: Invalid amount");
         uint256 vaultTokenLiquidity = getVaultLiquidity(_tokenAddress);
         require(vaultTokenLiquidity >= _amount, "Insufficient vault liquidity");
-        SafeERC20.safeTransfer(IERC20(_tokenAddress), msg.sender, _amount);
+
+        if (_tokenAddress == NATIVE_ADDRESS) {
+            (bool success, ) = msg.sender.call{value: _amount}("");
+            require(success, "ETH transfer failed");
+        } else {
+            SafeERC20.safeTransfer(IERC20(_tokenAddress), msg.sender, _amount);
+        }
     }
 
     function claim(UserOperation calldata userOp, bytes32 _hash) public nonReentrant() {
@@ -322,20 +366,32 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
         require(block.timestamp <= validUntil, "Claim signature expired");
         console.log("Timestamp checks passed");
 
+        require(getVaultLiquidity(_tokenAddress) >= _creditAmount, "Insufficient vault liquidity");
+
         address signingAuthority = ECDSA.recover(hash, signature);
         console.log("Recovered signing authority: %s", signingAuthority);
         require(isVaultManager[signingAuthority] , "Paymaster: Invalid claim signature");
         console.log("Solver verification passed");
         
         usedClaimHashes[_hash] = true;
-        
-        SafeERC20.safeTransfer(IERC20(_tokenAddress), userOp.getSender(), _creditAmount);
-        console.log("Transfer completed");
 
-        _triggerSettlement(reclaimPlan);
+        if (_tokenAddress == NATIVE_ADDRESS) {
+            (bool success, ) = userOp.getSender().call{value: _creditAmount}("");
+            require(success, "ETH transfer failed");
+            console.log("Transfer completed A");
+        } else {
+            SafeERC20.safeTransfer(IERC20(_tokenAddress), userOp.getSender(), _creditAmount);
+            console.log("Transfer completed B");
+        }
+
+        bytes32 transactionId = keccak256(abi.encode(block.chainid, userOp.getSender(), claimNonce[userOp.getSender()]));
+
+        _triggerSettlement(reclaimPlan, transactionId);
         console.log("Settlement triggered");
 
-        emit SolverSponsored(userOp.getSender(), _tokenAddress, _creditAmount, _debitAmount, address(this), reclaimPlan);
+        claimNonce[userOp.getSender()]++;
+
+        emit SolverSponsored(userOp.getSender(), _tokenAddress, _creditAmount, _debitAmount, address(this), reclaimPlan, transactionId);
     }
 
     function inbound(
@@ -347,10 +403,11 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
             address userAddress,
             address tokenAddress,
             uint256 amount,
-            address receiverAddress
+            address receiverAddress,
+            bytes32 transactionId
         ) = abi.decode(
             _payload,
-            (address, address, uint256, address)
+            (address, address, uint256, address, bytes32)
         );
 
         console.log("SrcChainSlug: ", srcChainSlug_);
@@ -358,6 +415,10 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
         console.log("Token addr: ", tokenAddress);
         console.log("Amount: ", amount);
         console.log("Receiver addr: ", receiverAddress);
+        console.log("Transaction Id: ", uint256(transactionId));
+
+        require(!settledTransactionIds[transactionId], "Transaction ID already executed on this chain");
+        console.log("Transaction ID check passed");
 
         require(amount > 0, "Amount must be greater than 0");
         console.log("Amount check passed");
@@ -368,14 +429,15 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
         deposits[tokenAddress][userAddress] -= amount;
         console.log("Updated deposits - new balance: %s", deposits[tokenAddress][userAddress]);
 
-        deposits[tokenAddress][address(this)] += amount;
-        console.log("Transfer successful");
+        totalDeposits[tokenAddress] -= amount;
 
-        emit Claimed(receiverAddress, tokenAddress, amount, userAddress);
+        settledTransactionIds[transactionId] = true;
+
+        emit Claimed(receiverAddress, tokenAddress, amount, userAddress, transactionId);
         console.log("Claim event emitted");
     }
 
-    function _triggerSettlement(bytes calldata reclaimPlan) internal {
+    function _triggerSettlement(bytes calldata reclaimPlan, bytes32 transactionId) internal {
         (
             uint32[] memory chainIds, 
             address[] memory tokenAddresses,
@@ -384,20 +446,23 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
             address userAddress
         ) = abi.decode(reclaimPlan, (uint32[], address[], uint256[], address, address));
 
-        // Verify arrays have same length
-        require(chainIds.length == tokenAddresses.length && chainIds.length == amounts.length, 
-            "Array lengths must match");
+        console.log("Triggering Settlement");
 
-        uint256 MAX_BATCH_SIZE = 10; // Configurable
+        // Verify arrays have same length
+        require(chainIds.length == tokenAddresses.length && chainIds.length == amounts.length, "Array lengths must match");
+        require(chainIds.length <= settlementMaxBatchSize, "Batch too large");
+
+        console.log("Settlement Plan Length Checks Passed");
+
         for (uint i = 0; i < chainIds.length;) {
-            require(i < MAX_BATCH_SIZE, "Batch too large");
             _sendSettlementMessage(
                 chainIds[i],
                 settlementMessageGasLimit, // gasLimit - you may want to make this configurable
                 userAddress,
                 tokenAddresses[i],
                 amounts[i],
-                receiverAddress
+                receiverAddress,
+                transactionId
             );
             unchecked { ++i; }
         }
@@ -409,11 +474,14 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
         address userAddress, 
         address tokenAddress, 
         uint256 amount, 
-        address receiverAddress
+        address receiverAddress,
+        bytes32 transactionId
     ) internal {
-        bytes memory payload = abi.encode(userAddress, tokenAddress, amount, receiverAddress);
+        bytes memory payload = abi.encode(userAddress, tokenAddress, amount, receiverAddress, transactionId);
         uint256 fees = ISocket(socket).getMinFees(
-            gasLimit_, payload.length, bytes32(0), bytes32(0), destinationChainSlug, siblingPlugs[destinationChainSlug]);
+            gasLimit_, payload.length, bytes32(0), bytes32(0), destinationChainSlug, address(this));
+        
+        console.log("Settlement Fees calculated: ", destinationChainSlug, fees);
 
         ISocket(
             socket
@@ -432,4 +500,7 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
         );
         siblingPlugs[_remoteChainSlug] = _remotePlug;
     }
+
+    // Add receive function to accept NATIVE TOKEN
+    receive() external payable {}
 }

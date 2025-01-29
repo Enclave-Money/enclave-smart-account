@@ -8,7 +8,18 @@ let mnemonic = 'test '.repeat(11) + 'junk'
 function getNetwork1(url: string) {
   return {
     url,
-    accounts: [process.env.PRIVATE_KEY2 as string, process.env.PRIVATE_KEY as string]
+    accounts: [process.env.PRIVATE_KEY2 as string, process.env.PRIVATE_KEY as string, process.env.ODYSSEY_TEST_KEY as string],
+    loggingEnabled: true,
+    traces: true,
+  };
+}
+
+function getNetwork2(url: string) {
+  return {
+    url,
+    accounts: [process.env.ODYSSEY_TEST_KEY as string],
+    loggingEnabled: true,
+    traces: true,
   };
 }
 
@@ -87,10 +98,14 @@ const config: HardhatUserConfig = {
       url: "http://127.0.0.1:8546",
     },
     hardhat: {
-      forking: {
-          url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`, // or use Alchemy
-          blockNumber: 21128662 // Optional: specify a block number to fork from
+      mining: {
+        auto: true,
+        interval: 0
       }
+      // forking: {
+      //     url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`, // or use Alchemy
+      //     blockNumber: 21128662 // Optional: specify a block number to fork from
+      // }
     },
     dev2: {url: "https://127.0.0.1:4200"},
     arbitrumSepolia: {
@@ -106,8 +121,9 @@ const config: HardhatUserConfig = {
 
     // Test Balance Network Configs
     sepolia: getNetworkTestBalance("https://sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
-    opSepolia: getNetworkTestBalance("https://optimism-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
-    arbSepolia: getNetworkTestBalance("https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
+    opSepolia: getNetwork2("https://optimism-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
+    arbSepolia: getNetwork2("https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
+    odyssey: getNetwork1("https://odyssey.ithaca.xyz"),
     //////////////////////////////////////////////////////////////
     
     amoy: getNetwork1("https://polygon-amoy.infura.io/v3/" + process.env.INFURA_API_KEY),
@@ -142,8 +158,17 @@ const config: HardhatUserConfig = {
       arbSepolia: "MD9NYEJGPWUSBESQP9QQGFTB4G4EKKU69U",
       opmain: process.env.OP_SCAN_API_KEY as string,
       arbmain: process.env.ARB_SCAN_API_KEY as string,
+      odyssey: 'empty'
     },
     customChains: [
+      {
+        network: "odyssey",
+        chainId: 911867,
+        urls: {
+          apiURL: "https://explorer-odyssey.t.conduit.xyz/api",
+          browserURL: "https://explorer-odyssey.t.conduit.xyz:443"
+        }
+      },
       {
         network: 'amoy',
         chainId: 80002,
