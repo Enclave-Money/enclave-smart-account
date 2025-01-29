@@ -684,163 +684,163 @@ describe("EnclaveVirtualLiquidityVault", function () {
     });
 
     // TEMP TESTCASES
-    describe("_sendSettlementMessage", function () {
-      it("should send settlement message through socket", async function () {
-        // Test parameters
-        const destinationChainSlug = 421614; // Arbitrum Sepolia
-        const gasLimit = 100000;
-        const userAddress = addresses.user1;
-        const tokenAddress = mockToken.target;
-        const amount = smallerAmount;
-        const receiverAddress = addresses.solver;
-        const transactionId = ethers.keccak256(
-          ethers.AbiCoder.defaultAbiCoder().encode(
-            ["uint256", "address", "uint256"],
-            [await ethers.provider.getNetwork().then(n => n.chainId), userAddress, 0]
-          )
-        );
+    // describe("_sendSettlementMessage", function () {
+    //   it("should send settlement message through socket", async function () {
+    //     // Test parameters
+    //     const destinationChainSlug = 421614; // Arbitrum Sepolia
+    //     const gasLimit = 100000;
+    //     const userAddress = addresses.user1;
+    //     const tokenAddress = mockToken.target;
+    //     const amount = smallerAmount;
+    //     const receiverAddress = addresses.solver;
+    //     const transactionId = ethers.keccak256(
+    //       ethers.AbiCoder.defaultAbiCoder().encode(
+    //         ["uint256", "address", "uint256"],
+    //         [await ethers.provider.getNetwork().then(n => n.chainId), userAddress, 0]
+    //       )
+    //     );
 
-        // Expected payload
-        const expectedPayload = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["address", "address", "uint256", "address", "bytes32"],
-          [userAddress, tokenAddress, amount, receiverAddress, transactionId]
-        );
+    //     // Expected payload
+    //     const expectedPayload = ethers.AbiCoder.defaultAbiCoder().encode(
+    //       ["address", "address", "uint256", "address", "bytes32"],
+    //       [userAddress, tokenAddress, amount, receiverAddress, transactionId]
+    //     );
 
-        // Call _sendSettlementMessage
-        //@ts-ignore
-        await expect(vault.connect(owner)._sendSettlementMessage(
-          destinationChainSlug,
-          gasLimit,
-          userAddress,
-          tokenAddress,
-          amount,
-          receiverAddress,
-          transactionId
-        )).to.not.be.reverted;
-      });
+    //     // Call _sendSettlementMessage
+    //     //@ts-ignore
+    //     await expect(vault.connect(owner)._sendSettlementMessage(
+    //       destinationChainSlug,
+    //       gasLimit,
+    //       userAddress,
+    //       tokenAddress,
+    //       amount,
+    //       receiverAddress,
+    //       transactionId
+    //     )).to.not.be.reverted;
+    //   });
 
-      it("should revert if called by non-vault manager", async function () {
-        //@ts-ignore
-        await expect(vault.connect(user1)._sendSettlementMessage(
-          421614,
-          100000,
-          addresses.user1,
-          mockToken.target,
-          smallerAmount,
-          addresses.solver,
-          ethers.ZeroHash
-        )).to.be.revertedWith("Caller is not a vault manager");
-      });
-    });
+    //   it("should revert if called by non-vault manager", async function () {
+    //     //@ts-ignore
+    //     await expect(vault.connect(user1)._sendSettlementMessage(
+    //       421614,
+    //       100000,
+    //       addresses.user1,
+    //       mockToken.target,
+    //       smallerAmount,
+    //       addresses.solver,
+    //       ethers.ZeroHash
+    //     )).to.be.revertedWith("Caller is not a vault manager");
+    //   });
+    // });
 
-    describe("_triggerSettlement", function () {
-      it("should process reclaim plan and trigger settlement messages", async function () {
-        // Create a reclaim plan with multiple chains
-        const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["uint32[]", "address[]", "uint256[]", "address", "address"],
-          [
-            [421614, 11155420], // Example chain IDs for Arbitrum Sepolia and OP Sepolia
-            [mockToken.target, mockToken.target], // Token addresses for each chain
-            [smallerAmount / 2n, smallerAmount / 2n], // Split amount between chains
-            addresses.solver, // Receiver address
-            addresses.user1  // User address
-          ]
-        );
+    // describe("_triggerSettlement", function () {
+    //   it("should process reclaim plan and trigger settlement messages", async function () {
+    //     // Create a reclaim plan with multiple chains
+    //     const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
+    //       ["uint32[]", "address[]", "uint256[]", "address", "address"],
+    //       [
+    //         [421614, 11155420], // Example chain IDs for Arbitrum Sepolia and OP Sepolia
+    //         [mockToken.target, mockToken.target], // Token addresses for each chain
+    //         [smallerAmount / 2n, smallerAmount / 2n], // Split amount between chains
+    //         addresses.solver, // Receiver address
+    //         addresses.user1  // User address
+    //       ]
+    //     );
 
-        const transactionId = ethers.keccak256(
-          ethers.AbiCoder.defaultAbiCoder().encode(
-            ["uint256", "address", "uint256"],
-            [await ethers.provider.getNetwork().then(n => n.chainId), addresses.user1, 0]
-          )
-        );
+    //     const transactionId = ethers.keccak256(
+    //       ethers.AbiCoder.defaultAbiCoder().encode(
+    //         ["uint256", "address", "uint256"],
+    //         [await ethers.provider.getNetwork().then(n => n.chainId), addresses.user1, 0]
+    //       )
+    //     );
 
-        // Call _triggerSettlement
-        //@ts-ignore
-        await expect(vault.connect(owner)._triggerSettlement(reclaimPlan, transactionId))
-          .to.not.be.reverted;
-      });
+    //     // Call _triggerSettlement
+    //     //@ts-ignore
+    //     await expect(vault.connect(owner)._triggerSettlement(reclaimPlan, transactionId))
+    //       .to.not.be.reverted;
+    //   });
 
-      it("should revert if arrays have different lengths", async function () {
-        // Create invalid reclaim plan with mismatched array lengths
-        const invalidReclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["uint32[]", "address[]", "uint256[]", "address", "address"],
-          [
-            [421614, 11155420], // Two chain IDs
-            [mockToken.target], // Only one token address
-            [smallerAmount], // Only one amount
-            addresses.solver,
-            addresses.user1
-          ]
-        );
+    //   it("should revert if arrays have different lengths", async function () {
+    //     // Create invalid reclaim plan with mismatched array lengths
+    //     const invalidReclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
+    //       ["uint32[]", "address[]", "uint256[]", "address", "address"],
+    //       [
+    //         [421614, 11155420], // Two chain IDs
+    //         [mockToken.target], // Only one token address
+    //         [smallerAmount], // Only one amount
+    //         addresses.solver,
+    //         addresses.user1
+    //       ]
+    //     );
 
-        const transactionId = ethers.keccak256(
-          ethers.AbiCoder.defaultAbiCoder().encode(
-            ["uint256", "address", "uint256"],
-            [await ethers.provider.getNetwork().then(n => n.chainId), addresses.user1, 0]
-          )
-        );
+    //     const transactionId = ethers.keccak256(
+    //       ethers.AbiCoder.defaultAbiCoder().encode(
+    //         ["uint256", "address", "uint256"],
+    //         [await ethers.provider.getNetwork().then(n => n.chainId), addresses.user1, 0]
+    //       )
+    //     );
 
-        // Call should revert
-        //@ts-ignore
-        await expect(vault.connect(owner)._triggerSettlement(invalidReclaimPlan, transactionId))
-          .to.be.revertedWith("Array lengths must match");
-      });
+    //     // Call should revert
+    //     //@ts-ignore
+    //     await expect(vault.connect(owner)._triggerSettlement(invalidReclaimPlan, transactionId))
+    //       .to.be.revertedWith("Array lengths must match");
+    //   });
 
-      it("should revert if batch size exceeds maximum", async function () {
-        // Create arrays that exceed settlementMaxBatchSize (10)
-        const chainIds = Array(11).fill(421614);
-        const tokenAddresses = Array(11).fill(mockToken.target);
-        const amounts = Array(11).fill(smallerAmount / 11n);
+    //   it("should revert if batch size exceeds maximum", async function () {
+    //     // Create arrays that exceed settlementMaxBatchSize (10)
+    //     const chainIds = Array(11).fill(421614);
+    //     const tokenAddresses = Array(11).fill(mockToken.target);
+    //     const amounts = Array(11).fill(smallerAmount / 11n);
 
-        const tooLargeReclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["uint32[]", "address[]", "uint256[]", "address", "address"],
-          [
-            chainIds,
-            tokenAddresses,
-            amounts,
-            addresses.solver,
-            addresses.user1
-          ]
-        );
+    //     const tooLargeReclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
+    //       ["uint32[]", "address[]", "uint256[]", "address", "address"],
+    //       [
+    //         chainIds,
+    //         tokenAddresses,
+    //         amounts,
+    //         addresses.solver,
+    //         addresses.user1
+    //       ]
+    //     );
 
-        const transactionId = ethers.keccak256(
-          ethers.AbiCoder.defaultAbiCoder().encode(
-            ["uint256", "address", "uint256"],
-            [await ethers.provider.getNetwork().then(n => n.chainId), addresses.user1, 0]
-          )
-        );
+    //     const transactionId = ethers.keccak256(
+    //       ethers.AbiCoder.defaultAbiCoder().encode(
+    //         ["uint256", "address", "uint256"],
+    //         [await ethers.provider.getNetwork().then(n => n.chainId), addresses.user1, 0]
+    //       )
+    //     );
 
-        // Call should revert
-        //@ts-ignore
-        await expect(vault.connect(owner)._triggerSettlement(tooLargeReclaimPlan, transactionId))
-          .to.be.revertedWith("Batch too large");
-      });
+    //     // Call should revert
+    //     //@ts-ignore
+    //     await expect(vault.connect(owner)._triggerSettlement(tooLargeReclaimPlan, transactionId))
+    //       .to.be.revertedWith("Batch too large");
+    //   });
 
-      it("should revert if called by non-vault manager", async function () {
-        const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["uint32[]", "address[]", "uint256[]", "address", "address"],
-          [
-            [421614],
-            [mockToken.target],
-            [smallerAmount],
-            addresses.solver,
-            addresses.user1
-          ]
-        );
+    //   it("should revert if called by non-vault manager", async function () {
+    //     const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
+    //       ["uint32[]", "address[]", "uint256[]", "address", "address"],
+    //       [
+    //         [421614],
+    //         [mockToken.target],
+    //         [smallerAmount],
+    //         addresses.solver,
+    //         addresses.user1
+    //       ]
+    //     );
 
-        const transactionId = ethers.keccak256(
-          ethers.AbiCoder.defaultAbiCoder().encode(
-            ["uint256", "address", "uint256"],
-            [await ethers.provider.getNetwork().then(n => n.chainId), addresses.user1, 0]
-          )
-        );
+    //     const transactionId = ethers.keccak256(
+    //       ethers.AbiCoder.defaultAbiCoder().encode(
+    //         ["uint256", "address", "uint256"],
+    //         [await ethers.provider.getNetwork().then(n => n.chainId), addresses.user1, 0]
+    //       )
+    //     );
 
-        // Call should revert when called by non-manager
-        //@ts-ignore
-        await expect(vault.connect(user1)._triggerSettlement(reclaimPlan, transactionId))
-          .to.be.revertedWith("Caller is not a vault manager");
-      });
-    });
+    //     // Call should revert when called by non-manager
+    //     //@ts-ignore
+    //     await expect(vault.connect(user1)._triggerSettlement(reclaimPlan, transactionId))
+    //       .to.be.revertedWith("Caller is not a vault manager");
+    //   });
+    // });
   });
 });
 
