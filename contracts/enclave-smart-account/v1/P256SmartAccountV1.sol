@@ -41,7 +41,7 @@ contract P256SmartAccountV1 is
         address _enclaveRegistry
     ) public virtual override initializer {
         // Call the initialize function of the superclass
-        super.initialize(_pubKey, _enclaveRegistry);
+        _initialize(_pubKey, _enclaveRegistry);
         
         // Set smartBalanceEnabled to true
         smartBalanceEnabled = true;
