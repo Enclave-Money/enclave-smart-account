@@ -40,7 +40,6 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
 
     mapping(address => uint256) public withdrawNonce;
     mapping(address => uint256) public claimNonce;
-    mapping(bytes32 => bool) public usedClaimHashes;
     mapping(bytes32 => bool) public settledTransactionIds;
 
     uint256 public settlementMessageGasLimit;
@@ -112,6 +111,25 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
         return keccak256(
             abi.encode(
                 userOp.sender, block.chainid, address(this), senderNonce[userOp.getSender()], validUntil, validAfter, _tokenAddress, _amount
+            )
+        );
+    }
+
+    function getClaimHash(UserOperation calldata userOp, uint48 validUntil, uint48 validAfter, address _tokenAddress, uint256 _amount) 
+        public 
+        view 
+        returns (bytes32) 
+    {
+        return keccak256(
+            abi.encode(
+                userOp.sender,
+                block.chainid,
+                address(this),
+                claimNonce[userOp.sender],
+                validUntil,
+                validAfter,
+                _tokenAddress,
+                _amount
             )
         );
     }
@@ -349,15 +367,16 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
         }
     }
 
-    function claim(UserOperation calldata userOp, bytes32 _hash) public nonReentrant() {
+    function claim(UserOperation calldata userOp) public nonReentrant() {
         console.log("Claim called");
-        require(!usedClaimHashes[_hash], "Hash already used");
-        console.log("Hash check passed");
-
-        bytes32 hash = ECDSA.toEthSignedMessageHash(_hash);
         
         (uint48 validUntil, uint48 validAfter, address _tokenAddress, uint256 _creditAmount, uint256 _debitAmount, bytes calldata signature, bytes calldata reclaimPlan) = parsePaymasterAndData(userOp.paymasterAndData);
-        console.log("Parsed paymaster data - valid token: %s, credit: %s, debit: %s", _tokenAddress, _creditAmount, _debitAmount);
+        
+        uint256 currentNonce = claimNonce[userOp.sender];
+        bytes32 expectedHash = getClaimHash(userOp, validUntil, validAfter, _tokenAddress, _creditAmount);
+        
+        bytes32 hash = ECDSA.toEthSignedMessageHash(expectedHash);
+        
         console.log("Block time: ", block.timestamp);
         require(block.timestamp > validAfter, "Premature claim");
         require(block.timestamp <= validUntil, "Claim signature expired");
@@ -367,28 +386,26 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
 
         address signingAuthority = ECDSA.recover(hash, signature);
         console.log("Recovered signing authority: %s", signingAuthority);
-        require(isVaultManager[signingAuthority] , "Paymaster: Invalid claim signature");
+        require(isVaultManager[signingAuthority], "Paymaster: Invalid claim signature");
         console.log("Solver verification passed");
-        
-        usedClaimHashes[_hash] = true;
 
         if (_tokenAddress == NATIVE_ADDRESS) {
             (bool success, ) = userOp.getSender().call{value: _creditAmount}("");
             require(success, "ETH transfer failed");
             console.log("Transfer completed A");
         } else {
-            SafeERC20.safeTransfer(IERC20(_tokenAddress), userOp.getSender(), _creditAmount);
+            SafeERC20.safeTransfer(IERC20(_tokenAddress), userOp.sender, _creditAmount);
             console.log("Transfer completed B");
         }
 
-        bytes32 transactionId = keccak256(abi.encode(block.chainid, userOp.getSender(), claimNonce[userOp.getSender()]));
+        bytes32 transactionId = keccak256(abi.encode(block.chainid, userOp.sender, currentNonce));
 
         _triggerSettlement(reclaimPlan, transactionId);
         console.log("Settlement triggered");
 
-        claimNonce[userOp.getSender()]++;
+        claimNonce[userOp.sender]++;
 
-        emit SolverSponsored(userOp.getSender(), _tokenAddress, _creditAmount, _debitAmount, address(this), reclaimPlan, transactionId);
+        emit SolverSponsored(userOp.sender, _tokenAddress, _creditAmount, _debitAmount, address(this), reclaimPlan, transactionId);
     }
 
     function inbound(

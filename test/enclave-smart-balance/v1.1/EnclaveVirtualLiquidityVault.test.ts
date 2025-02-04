@@ -395,6 +395,7 @@ describe("EnclaveVirtualLiquidityVault", function () {
   });
 
   describe("Cross-chain Functions", function () {
+
     beforeEach(async function () {
       //@ts-ignore
       await vault.connect(user1).deposit(mockToken.target, depositAmount);
@@ -440,7 +441,7 @@ describe("EnclaveVirtualLiquidityVault", function () {
           [[], [], [], ethers.ZeroAddress, ethers.ZeroAddress]
         );
 
-        const hash = await vault.getHash(userOp, validUntil, validAfter, mockToken.target, smallerAmount);
+        const hash = await vault.getClaimHash(userOp, validUntil, validAfter, mockToken.target, smallerAmount);
         const signature = await owner.signMessage(ethers.getBytes(hash));
 
         // Construct complete paymasterAndData
@@ -458,7 +459,7 @@ describe("EnclaveVirtualLiquidityVault", function () {
         let nonce = await vault.claimNonce(userOp.sender);
 
         // Call the claim function
-        await expect(vault.claim(userOp, hash))
+        await expect(vault.claim(userOp))
           .to.emit(vault, "SolverSponsored")
           .withArgs(
             userOp.sender,           // user address
@@ -522,11 +523,11 @@ describe("EnclaveVirtualLiquidityVault", function () {
         userOp.paymasterAndData = paymasterAndData;
 
         // First claim should succeed
-        await vault.claim(userOp, hash);
+        await vault.claim(userOp);
 
         // Second claim with same hash should fail
-        await expect(vault.claim(userOp, hash))
-          .to.be.revertedWith("Hash already used");
+        await expect(vault.claim(userOp))
+          .to.be.revertedWith("Paymaster: Invalid claim signature");
       });
 
       it("should process valid claims with settlement trigger", async function () {
@@ -591,7 +592,7 @@ describe("EnclaveVirtualLiquidityVault", function () {
         const initialVaultBalance = await mockToken.balanceOf(vault.target);
 
         // Call the claim function
-        await expect(vault.claim(userOp, hash))
+        await expect(vault.claim(userOp))
           .to.emit(vault, "SolverSponsored")
           .withArgs(
             userOp.sender,
@@ -616,9 +617,6 @@ describe("EnclaveVirtualLiquidityVault", function () {
 
         // Verify claim nonce was incremented
         expect(await vault.claimNonce(userOp.sender)).to.equal(nonce + 1n);
-
-        // Verify hash was marked as used
-        expect(await vault.usedClaimHashes(hash)).to.equal(true);
       });
     });
 
