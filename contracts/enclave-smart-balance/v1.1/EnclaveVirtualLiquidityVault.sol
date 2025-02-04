@@ -110,7 +110,7 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
         //can't use userOp.hash(), since it contains also the paymasterAndData itself.
         return keccak256(
             abi.encode(
-                userOp.sender, block.chainid, address(this), senderNonce[userOp.getSender()], validUntil, validAfter, _tokenAddress, _amount
+                userOp.sender, block.chainid, address(this), senderNonce[userOp.sender], validUntil, validAfter, _tokenAddress, _amount
             )
         );
     }
@@ -172,7 +172,7 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
         // we only "require" it here so that the revert reason on invalid signature will be of "VerifyingPaymaster", and not "ECDSA"
         require(signature.length == 65, "VerifyingPaymaster: invalid signature length in paymasterAndData");
         bytes32 hash = ECDSA.toEthSignedMessageHash(getHash(userOp, validUntil, validAfter, _tokenAddress, _amount));
-        senderNonce[userOp.getSender()]++;
+        senderNonce[userOp.sender]++;
 
         address sponsor = ECDSA.recover(hash, signature);
 
@@ -390,7 +390,7 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
         console.log("Solver verification passed");
 
         if (_tokenAddress == NATIVE_ADDRESS) {
-            (bool success, ) = userOp.getSender().call{value: _creditAmount}("");
+            (bool success, ) = userOp.sender.call{value: _creditAmount}("");
             require(success, "ETH transfer failed");
             console.log("Transfer completed A");
         } else {
