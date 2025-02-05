@@ -4,6 +4,8 @@ import { Contract, Signer } from "ethers";
 
 describe("EnclaveVirtualLiquidityVault", function () {
   let vault: Contract;
+  let vaultImplementation: Contract;
+  let vaultProxy: Contract;
   let mockToken: Contract;
   let mockSocket: Contract;
   let mockEntryPoint: Contract;
@@ -30,36 +32,66 @@ describe("EnclaveVirtualLiquidityVault", function () {
 
     console.log("3. Deploying MockToken...");
     const MockToken = await ethers.getContractFactory("MockUSDC");
-    //@ts-ignore
-    mockToken = await MockToken.deploy("Mock Token", "MTK") as Contract;
+    mockToken = await MockToken.deploy("Mock Token", "MTK");
 
     console.log("4. Deploying MockSocket...");
     const MockSocket = await ethers.getContractFactory("MockSocket");
-    //@ts-ignore
-    mockSocket = await MockSocket.deploy() as Contract;
+    mockSocket = await MockSocket.deploy();
     
     console.log("5. Deploying MockEntryPoint...");
     const MockEntryPoint = await ethers.getContractFactory("EntryPoint");
-    //@ts-ignore
-    mockEntryPoint = await MockEntryPoint.deploy() as Contract;
+    mockEntryPoint = await MockEntryPoint.deploy();
 
-    console.log("6. Deploying Vault...");
-    const Vault = await ethers.getContractFactory("EnclaveVirtualLiquidityVault");
-    //@ts-ignore
-    vault = await Vault.deploy(
+    console.log("6. Deploying Vault Implementation...");
+    const VaultImplementation = await ethers.getContractFactory("EnclaveVirtualLiquidityVault");
+    vaultImplementation = await VaultImplementation.deploy(mockEntryPoint.target);
+    await vaultImplementation.waitForDeployment();
+
+    console.log("7. Deploying Proxy...");
+    const Proxy = await ethers.getContractFactory("ERC1967Proxy");
+    const initData = vaultImplementation.interface.encodeFunctionData("initialize", [
       addresses.owner,
-      mockEntryPoint.target,
       mockSocket.target,
-      ethers.ZeroAddress, // inboundSb
-      ethers.ZeroAddress  // outboundSb
-    ) as Contract;
+      ethers.ZeroAddress,
+      ethers.ZeroAddress,
+      mockEntryPoint.target,
+    ]);
 
-    console.log("7. Setting up initial token state...");
+    vaultProxy = await Proxy.deploy(
+      vaultImplementation.target,
+      initData
+    );
+    await vaultProxy.waitForDeployment();
+
+    console.log("8. Setting up vault interface...");
+    vault = VaultImplementation.attach(vaultProxy.target);
+
+    console.log("9. Setting up initial token state...");
     await mockToken.mint(addresses.user1, depositAmount * 2n);
-    //@ts-ignore
     await mockToken.connect(user1).approve(vault.target, depositAmount * 2n);
     
-    console.log("8. beforeEach setup complete");
+    console.log("10. beforeEach setup complete");
+  });
+
+  describe("Initialization", function () {
+    it("should be initialized with correct values", async function () {
+      expect(await vault.owner()).to.equal(addresses.owner);
+      console.log("Init 1 passed");
+      expect(await vault.entryPoint()).to.equal(mockEntryPoint.target);
+      console.log("Init 2 passed");
+      expect(await vault.socket()).to.equal(mockSocket.target);
+      console.log("Init 3 passed");
+    });
+
+    it("should not allow reinitialization", async function () {
+      await expect(vault.initialize(
+        addresses.owner,
+        mockEntryPoint.target,
+        mockSocket.target,
+        ethers.ZeroAddress,
+        ethers.ZeroAddress
+      )).to.be.revertedWith("Initializable: contract is already initialized");
+    });
   });
 
   describe("Deposit Functions", function () {

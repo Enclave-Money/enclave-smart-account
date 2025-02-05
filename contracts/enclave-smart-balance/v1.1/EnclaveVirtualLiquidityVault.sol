@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -12,6 +14,7 @@ import "../../socket-contracts/IPlug.sol";
 import "../../socket-contracts/ISocket.sol";
 
 import "./EnclaveVaultManager.sol";
+import "./CustomBasePaymaster.sol";
 import "../../enclave-smart-account/EnclaveRegistry.sol";
 
 import "hardhat/console.sol";
@@ -25,8 +28,14 @@ import "hardhat/console.sol";
  * Subsequent versions will include: Liquidity provisioning, multiple solvers, inbuilt rebalancing 
  */
 
-contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, EnclaveVaultManager, IPlug  {
-
+contract EnclaveVirtualLiquidityVault is 
+    Initializable,
+    ReentrancyGuardUpgradeable,
+    UUPSUpgradeable,
+    CustomBasePaymaster, 
+    EnclaveVaultManager,
+    IPlug 
+{
     using ECDSA for bytes32;
     using UserOperationLib for UserOperation;
     using SafeERC20 for IERC20;
@@ -64,23 +73,21 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
     // Constant for NATIVE TOKEN address representation
     address constant public NATIVE_ADDRESS = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
-    /**
-     * @notice Initializes the EnclaveVitualLiquidityPaymaster contract
-     * @param _manager Address that will be the initial vault manager and owner
-     * @param _entryPoint The EntryPoint contract address for Account Abstraction
-     * @param _socket The gateway contract address for cross-chain communication
-     * @param _inboundSb The Router Network Service address
-     * @param _outboundSb The chain ID for the router network
-     * @dev Sets up initial vault manager, ownership, and core contract parameters
-     */
-    constructor(
-        address _manager, 
-        IEntryPoint _entryPoint, 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(IEntryPoint _entryPoint) CustomBasePaymaster(_entryPoint) EnclaveVaultManager(address(0)) {
+        _disableInitializers();
+    }
+
+    function initialize(
+        address _manager,
         address _socket,
-        address _inboundSb, 
-        address _outboundSb
-    ) BasePaymaster(_entryPoint) EnclaveVaultManager (_manager)
-    {
+        address _inboundSb,
+        address _outboundSb,
+        IEntryPoint _entryPoint
+    ) public initializer {
+        __ReentrancyGuard_init();
+        __UUPSUpgradeable_init();
+
         socket = _socket;
         inboundSwitchBoard = _inboundSb;
         outboundSwitchBoard = _outboundSb;
@@ -88,7 +95,14 @@ contract EnclaveVirtualLiquidityVault is ReentrancyGuard, BasePaymaster, Enclave
         settlementMessageGasLimit = 100000;
         settlementMaxBatchSize = 10;
 
+        entryPoint = _entryPoint;
+        
+        // Initialize EnclaveVaultManager
+        isVaultManager[_manager] = true;
+        emit VaultManagerAdded(_manager);
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     modifier onlySocket () {
         require(msg.sender == socket, "Caller is not Socket");
