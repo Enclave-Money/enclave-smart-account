@@ -15,7 +15,6 @@ import "../../socket-contracts/ISocket.sol";
 
 import "./EnclaveVaultManager.sol";
 import "./CustomBasePaymaster.sol";
-import "../../enclave-smart-account/EnclaveRegistry.sol";
 
 import "hardhat/console.sol";
 
