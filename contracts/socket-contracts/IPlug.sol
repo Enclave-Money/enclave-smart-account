@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 /**
  * @title IPlug
- * @notice Interface for a plug contract that executes the message received from a source chain.
+ * @notice Interface for a plug contract that executes the payload received from a source chain.
  */
 interface IPlug {
     /**
      * @dev this should be only executable by socket
-     * @notice executes the message received from source chain
+     * @notice executes the payload received from source chain
      * @notice It is expected to have original sender checks in the destination plugs using payload
-     * @param srcChainSlug_ chain slug of source
      * @param payload_ the data which is needed by plug at inbound call on remote
      */
-    function inbound(
-        uint32 srcChainSlug_,
-        bytes calldata payload_
-    ) external payable;
+    function inbound(bytes calldata payload_) external payable returns (bytes memory);
+
+    function connectSocket(address appGateway_, address socket_, address switchboard_) external;
 }

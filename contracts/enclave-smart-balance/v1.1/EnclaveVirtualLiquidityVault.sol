@@ -53,14 +53,16 @@ contract EnclaveVirtualLiquidityVault is
     uint256 public settlementMessageGasLimit;
     uint256 public settlementMaxBatchSize;
 
+    event Connected(address indexed appGateway, address indexed socket, address indexed switchBoard, uint256 timestamp);
     event Deposited(address indexed user, address indexed tokenAddress, uint256 amount);
     event Withdrawn(address indexed user, address indexed tokenAddress, uint256 amount, address indexed vaultManager);
     event SolverSponsored(address indexed user, address indexed tokenAddress, uint256 creditAmount, uint256 futureDebitAmount, address indexed paymaster, bytes reclaimPlan, bytes32 transactionId);
     event Claimed(address indexed solver, address indexed tokenAddress, uint256 amount, address indexed owner, bytes32 transactionId);
 
-    address public socket;
-    address public inboundSwitchBoard;   
-    address public outboundSwitchBoard; 
+    address public socket;   
+    address public switchBoard; 
+    address public appGateway;
+    bool public connected; // True if connected to socket
 
     uint256 private constant VALID_TIMESTAMP_OFFSET = 20; // remains the same
     uint256 private constant TOKEN_ADDRESS_OFFSET = 84;   // updated
@@ -79,17 +81,15 @@ contract EnclaveVirtualLiquidityVault is
 
     function initialize(
         address _manager,
-        address _socket,
-        address _inboundSb,
-        address _outboundSb,
         IEntryPoint _entryPoint
     ) public initializer {
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
 
-        socket = _socket;
-        inboundSwitchBoard = _inboundSb;
-        outboundSwitchBoard = _outboundSb;
+        connected = false;
+
+        // Might have to do this in connectSocket function since this gets called at time of deployment 
+        // and connectSocket needs onlyOwner so that ContractFactoryPlug can call it
         _transferOwnership(_manager);
         settlementMessageGasLimit = 100000;
         settlementMaxBatchSize = 10;
@@ -422,11 +422,11 @@ contract EnclaveVirtualLiquidityVault is
     }
 
     function inbound(
-        uint32 srcChainSlug_,
         bytes calldata _payload
-    ) external payable onlySocket {
+    ) external payable onlySocket returns (bytes memory) {
         console.log("Inbound function called");
         (
+            uint32 srcChainSlug_,
             address userAddress,
             address tokenAddress,
             uint256 amount,
@@ -434,7 +434,7 @@ contract EnclaveVirtualLiquidityVault is
             bytes32 transactionId
         ) = abi.decode(
             _payload,
-            (address, address, uint256, address, bytes32)
+            (uint32, address, address, uint256, address, bytes32)
         );
 
         console.log("SrcChainSlug: ", srcChainSlug_);
@@ -462,6 +462,8 @@ contract EnclaveVirtualLiquidityVault is
 
         emit Claimed(receiverAddress, tokenAddress, amount, userAddress, transactionId);
         console.log("Claim event emitted");
+
+        return bytes("");
     }
 
     function _triggerSettlement(bytes calldata reclaimPlan, bytes32 transactionId) internal {
@@ -475,57 +477,22 @@ contract EnclaveVirtualLiquidityVault is
 
         console.log("Triggering Settlement");
 
-        // Verify arrays have same length
         require(chainIds.length == tokenAddresses.length && chainIds.length == amounts.length, "Array lengths must match");
         require(chainIds.length <= settlementMaxBatchSize, "Batch too large");
+        require(userAddress != address(0), "User address cannot be zero");
+        require(receiverAddress != address(0), "User address cannot be zero");
 
-        console.log("Settlement Plan Length Checks Passed");
-
-        for (uint i = 0; i < chainIds.length;) {
-            _sendSettlementMessage(
-                chainIds[i],
-                settlementMessageGasLimit, // gasLimit - you may want to make this configurable
-                userAddress,
-                tokenAddresses[i],
-                amounts[i],
-                receiverAddress,
-                transactionId
-            );
-            unchecked { ++i; }
-        }
+        ISocket(socket).callAppGateway(reclaimPlan, transactionId);
     }
 
-    function _sendSettlementMessage(
-        uint32 destinationChainSlug,
-        uint256 gasLimit_,
-        address userAddress, 
-        address tokenAddress, 
-        uint256 amount, 
-        address receiverAddress,
-        bytes32 transactionId
-    ) internal {
-        bytes memory payload = abi.encode(userAddress, tokenAddress, amount, receiverAddress, transactionId);
-        uint256 fees = ISocket(socket).getMinFees(
-            gasLimit_, payload.length, bytes32(0), bytes32(0), destinationChainSlug, address(this));
-        
-        console.log("Settlement Fees calculated: ", destinationChainSlug, fees);
+    function connectSocket(address appGateway_, address socket_, address switchboard_) external onlyOwner {
+        appGateway = appGateway_;
+        socket = socket_;
+        switchBoard = switchboard_;
 
-        ISocket(
-            socket
-        ).outbound{value: fees}(
-            destinationChainSlug,
-            gasLimit_,
-            bytes32(0),
-            bytes32(0),
-            payload
-        );
-    }
+        ISocket(socket_).connect(appGateway_, switchboard_);
 
-    function connectToPlug(uint32 _remoteChainSlug, address _remotePlug) external onlyVaultManager {
-        ISocket(socket).connect(
-            _remoteChainSlug, _remotePlug, inboundSwitchBoard, outboundSwitchBoard
-        );
-        siblingPlugs[_remoteChainSlug] = _remotePlug;
+        emit Connected(appGateway, socket, switchBoard, block.timestamp);
     }
 
     // Add receive function to accept NATIVE TOKEN
