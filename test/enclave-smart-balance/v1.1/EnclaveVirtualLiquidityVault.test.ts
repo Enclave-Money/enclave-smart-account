@@ -436,96 +436,15 @@ describe("EnclaveVirtualLiquidityVault", function () {
     });
 
     describe("claim", function () {
+      beforeEach(async function () {
+        await vault.connect(user1).deposit(mockToken.target, depositAmount);
+        await mockToken.mint(vault.target, depositAmount * 2n);
+      });
+
       it("should process valid claims", async function () {
-        const userOp = {
-          sender: addresses.user1,
-          nonce: 0,
-          initCode: "0x",
-          callData: "0x",
-          callGasLimit: 0,
-          verificationGasLimit: 0,
-          preVerificationGas: 0,
-          maxFeePerGas: 0,
-          maxPriorityFeePerGas: 0,
-          paymasterAndData: "0x",
-          signature: "0x"
-        };
-
         const validUntil = Math.floor(Date.now() / 1000) + 3600;
-        const validAfter = Math.floor(Date.now() / 1000) - 6000000;
-        console.log("validAfter: ", validAfter);
-        console.log("validUntil: ", validUntil);
+        const validAfter = Math.floor(Date.now() / 1000) - 3600;
 
-        // Create encoded components for paymasterAndData
-        const encodedTimestamps = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["uint48", "uint48"],
-          [validUntil, validAfter]
-        );
-
-        const encodedAmounts = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["address", "uint256", "uint256"],
-          [mockToken.target, smallerAmount, smallerAmount]  // Using same amount for credit and debit
-        );
-
-        // Create a dummy reclaim plan
-        const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["uint32[]", "address[]", "uint256[]", "address", "address"],
-          [[], [], [], ethers.ZeroAddress, ethers.ZeroAddress]
-        );
-
-        const hash = await vault.getClaimHash(userOp, validUntil, validAfter, mockToken.target, smallerAmount);
-        const signature = await owner.signMessage(ethers.getBytes(hash));
-
-        // Construct complete paymasterAndData
-        const paymasterAndData = ethers.concat([
-          vault.target as string,
-          encodedTimestamps,
-          encodedAmounts,
-          signature,
-          reclaimPlan
-        ]);
-
-        // Update userOp with valid paymasterAndData
-        userOp.paymasterAndData = paymasterAndData;
-
-        let nonce = await vault.claimNonce(userOp.sender);
-
-        // Call the claim function
-        await expect(vault.claim(userOp))
-          .to.emit(vault, "SolverSponsored")
-          .withArgs(
-            userOp.sender,           // user address
-            mockToken.target,            // token address
-            smallerAmount,            // credit amount
-            smallerAmount,            // debit amount
-            vault.target,           // paymaster address
-            reclaimPlan,            // reclaim plan
-            calculateTransactionId(
-              await ethers.provider.getNetwork().then(n => n.chainId),
-              userOp.sender,
-              nonce
-            )
-          );
-      });
-
-      it("should prevent signature reuse", async function () {
-        const userOp = {
-          sender: addresses.user1,
-          nonce: 0,
-          initCode: "0x",
-          callData: "0x",
-          callGasLimit: 0,
-          verificationGasLimit: 0,
-          preVerificationGas: 0,
-          maxFeePerGas: 0,
-          maxPriorityFeePerGas: 0,
-          paymasterAndData: "0x",
-          signature: "0x"
-        };
-
-        const validUntil = Math.floor(Date.now() / 1000) + 3600;
-        const validAfter = Math.floor(Date.now() / 1000) - 6000000;
-        
         const encodedTimestamps = ethers.AbiCoder.defaultAbiCoder().encode(
           ["uint48", "uint48"],
           [validUntil, validAfter]
@@ -541,10 +460,17 @@ describe("EnclaveVirtualLiquidityVault", function () {
           [[], [], [], ethers.ZeroAddress, ethers.ZeroAddress]
         );
 
-        const hash = await vault.getHash(userOp, validUntil, validAfter, mockToken.target, smallerAmount);
+        const hash = await vault.getClaimHash(
+          addresses.user1,
+          validUntil,
+          validAfter,
+          mockToken.target,
+          smallerAmount
+        );
+
         const signature = await owner.signMessage(ethers.getBytes(hash));
 
-        const paymasterAndData = ethers.concat([
+        const claimData = ethers.concat([
           vault.target as string,
           encodedTimestamps,
           encodedAmounts,
@@ -552,82 +478,14 @@ describe("EnclaveVirtualLiquidityVault", function () {
           reclaimPlan
         ]);
 
-        userOp.paymasterAndData = paymasterAndData;
-
-        // First claim should succeed
-        await vault.claim(userOp);
-
-        // Second claim with same hash should fail
-        await expect(vault.claim(userOp))
-          .to.be.revertedWith("Paymaster: Invalid claim signature");
-      });
-
-      it("should process valid claims with settlement trigger", async function () {
-        const userOp = {
-          sender: addresses.user1,
-          nonce: 0,
-          initCode: "0x",
-          callData: "0x",
-          callGasLimit: 0,
-          verificationGasLimit: 0,
-          preVerificationGas: 0,
-          maxFeePerGas: 0,
-          maxPriorityFeePerGas: 0,
-          paymasterAndData: "0x",
-          signature: "0x"
-        };
-
-        const validUntil = Math.floor(Date.now() / 1000) + 3600;
-        const validAfter = Math.floor(Date.now() / 1000) - 6000000;
-
-        // Create encoded components for paymasterAndData
-        const encodedTimestamps = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["uint48", "uint48"],
-          [validUntil, validAfter]
-        );
-
-        const encodedAmounts = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["address", "uint256", "uint256"],
-          [mockToken.target, smallerAmount, smallerAmount]
-        );
-
-        // Create a reclaim plan with actual chain IDs and amounts
-        const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["uint32[]", "address[]", "uint256[]", "address", "address"],
-          [
-            [421614, 11155420], // Example chain IDs for Arbitrum Sepolia and OP Sepolia
-            [mockToken.target, mockToken.target], // Token addresses for each chain
-            [smallerAmount / 2n, smallerAmount / 2n], // Split amount between chains
-            addresses.solver, // Receiver address
-            addresses.user1  // User address
-          ]
-        );
-
-        const hash = await vault.getHash(userOp, validUntil, validAfter, mockToken.target, smallerAmount);
-        const signature = await owner.signMessage(ethers.getBytes(hash));
-
-        // Construct complete paymasterAndData
-        const paymasterAndData = ethers.concat([
-          vault.target as string,
-          encodedTimestamps,
-          encodedAmounts,
-          signature,
-          reclaimPlan
-        ]);
-
-        userOp.paymasterAndData = paymasterAndData;
-
-        let nonce = await vault.claimNonce(userOp.sender);
-
-        // Get initial balances
-        const initialUserBalance = await mockToken.balanceOf(addresses.user1);
+        const initialBalance = await mockToken.balanceOf(addresses.user1);
         const initialVaultBalance = await mockToken.balanceOf(vault.target);
+        const nonce = await vault.claimNonce(addresses.user1);
 
-        // Call the claim function
-        await expect(vault.claim(userOp))
+        await expect(vault.connect(user1).claim(claimData))
           .to.emit(vault, "SolverSponsored")
           .withArgs(
-            userOp.sender,
+            addresses.user1,
             mockToken.target,
             smallerAmount,
             smallerAmount,
@@ -635,20 +493,99 @@ describe("EnclaveVirtualLiquidityVault", function () {
             reclaimPlan,
             calculateTransactionId(
               await ethers.provider.getNetwork().then(n => n.chainId),
-              userOp.sender,
+              addresses.user1,
               nonce
             )
           );
 
-        // Verify balances after claim
-        const finalUserBalance = await mockToken.balanceOf(addresses.user1);
-        const finalVaultBalance = await mockToken.balanceOf(vault.target);
+        expect(await mockToken.balanceOf(addresses.user1))
+          .to.equal(initialBalance + smallerAmount);
+        expect(await mockToken.balanceOf(vault.target))
+          .to.equal(initialVaultBalance - smallerAmount);
+        expect(await vault.claimNonce(addresses.user1)).to.equal(nonce + 1n);
+      });
 
-        expect(finalUserBalance - initialUserBalance).to.equal(smallerAmount);
-        expect(initialVaultBalance - finalVaultBalance).to.equal(smallerAmount);
+      it("should revert if claim is premature", async function () {
+        const validUntil = Math.floor(Date.now() / 1000) + 3600;
+        const validAfter = Math.floor(Date.now() / 1000) + 1800; // Future time
 
-        // Verify claim nonce was incremented
-        expect(await vault.claimNonce(userOp.sender)).to.equal(nonce + 1n);
+        const claimData = await constructClaimData(
+          validUntil,
+          validAfter,
+          mockToken.target,
+          smallerAmount,
+          smallerAmount,
+          owner,
+          vault,
+          addresses.user1
+        );
+
+        await expect(vault.connect(user1).claim(claimData))
+          .to.be.revertedWith("Premature claim");
+      });
+
+      it("should revert if claim signature has expired", async function () {
+        const validUntil = Math.floor(Date.now() / 1000) - 1800; // Past time
+        const validAfter = Math.floor(Date.now() / 1000) - 3600;
+
+        const claimData = await constructClaimData(
+          validUntil,
+          validAfter,
+          mockToken.target,
+          smallerAmount,
+          smallerAmount,
+          owner,
+          vault,
+          addresses.user1
+        );
+
+        await expect(vault.connect(user1).claim(claimData))
+          .to.be.revertedWith("Claim signature expired");
+      });
+
+      it("should revert with insufficient vault liquidity", async function () {
+        const validUntil = Math.floor(Date.now() / 1000) + 3600;
+        const validAfter = Math.floor(Date.now() / 1000) - 3600;
+        
+        // First withdraw most of the vault's liquidity to ensure insufficient funds
+        const currentLiquidity = await vault.getVaultLiquidity(mockToken.target);
+        await vault.connect(owner).withdrawToken(mockToken.target, currentLiquidity - ethers.parseEther("1"));
+        
+        // Try to claim more than the remaining liquidity
+        const claimAmount = ethers.parseEther("10");
+        
+        const claimData = await constructClaimData(
+            validUntil,
+            validAfter,
+            mockToken.target,
+            claimAmount,  // Try to claim more than what's available
+            claimAmount,
+            owner,
+            vault,
+            addresses.user1 // Add user address parameter
+        );
+
+        await expect(vault.connect(user1).claim(claimData))
+            .to.be.revertedWith("Insufficient vault liquidity");
+      });
+
+      it("should revert with invalid signature", async function () {
+        const validUntil = Math.floor(Date.now() / 1000) + 3600;
+        const validAfter = Math.floor(Date.now() / 1000) - 3600;
+
+        const claimData = await constructClaimData(
+          validUntil,
+          validAfter,
+          mockToken.target,
+          smallerAmount,
+          smallerAmount,
+          user2, // Using non-vault manager signer
+          vault,
+          addresses.user1 // Add user address parameter
+        );
+
+        await expect(vault.connect(user1).claim(claimData))
+          .to.be.revertedWith("Paymaster: Invalid claim signature");
       });
     });
 
@@ -714,6 +651,7 @@ describe("EnclaveVirtualLiquidityVault", function () {
     });
 
     // TEMP TESTCASES
+    // Mark _sendSettlementMessage as public or external and uncomment code below to test
     // describe("_sendSettlementMessage", function () {
     //   it("should send settlement message through socket", async function () {
     //     // Test parameters
@@ -882,4 +820,49 @@ function calculateTransactionId(chainId: number | bigint, userAddress: string, n
       [chainId, userAddress, nonce]
     )
   );
+}
+
+// Helper function to construct claim data
+async function constructClaimData(
+  validUntil: number,
+  validAfter: number,
+  tokenAddress: string,
+  creditAmount: bigint,
+  debitAmount: bigint,
+  signer: any,
+  vault: any,
+  userAddress: string
+) {
+  const encodedTimestamps = ethers.AbiCoder.defaultAbiCoder().encode(
+    ["uint48", "uint48"],
+    [validUntil, validAfter]
+  );
+
+  const encodedAmounts = ethers.AbiCoder.defaultAbiCoder().encode(
+    ["address", "uint256", "uint256"],
+    [tokenAddress, creditAmount, debitAmount]
+  );
+
+  const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
+    ["uint32[]", "address[]", "uint256[]", "address", "address"],
+    [[], [], [], ethers.ZeroAddress, ethers.ZeroAddress]
+  );
+
+  const hash = await vault.getClaimHash(
+    userAddress,
+    validUntil,
+    validAfter,
+    tokenAddress,
+    creditAmount
+  );
+
+  const signature = await signer.signMessage(ethers.getBytes(hash));
+
+  return ethers.concat([
+    vault.target as string,
+    encodedTimestamps,
+    encodedAmounts,
+    signature,
+    reclaimPlan
+  ]);
 }

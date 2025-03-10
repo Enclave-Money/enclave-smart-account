@@ -128,17 +128,17 @@ contract EnclaveVirtualLiquidityVault is
         );
     }
 
-    function getClaimHash(UserOperation calldata userOp, uint48 validUntil, uint48 validAfter, address _tokenAddress, uint256 _amount) 
+    function getClaimHash(address sender, uint48 validUntil, uint48 validAfter, address _tokenAddress, uint256 _amount) 
         public 
         view 
         returns (bytes32) 
     {
         return keccak256(
             abi.encode(
-                userOp.sender,
+                sender,
                 block.chainid,
                 address(this),
-                claimNonce[userOp.sender],
+                claimNonce[sender],
                 validUntil,
                 validAfter,
                 _tokenAddress,
@@ -380,13 +380,13 @@ contract EnclaveVirtualLiquidityVault is
         }
     }
 
-    function claim(UserOperation calldata userOp) public nonReentrant() {
+    function claim(bytes calldata claimData) public nonReentrant() {
         console.log("Claim called");
         
-        (uint48 validUntil, uint48 validAfter, address _tokenAddress, uint256 _creditAmount, uint256 _debitAmount, bytes calldata signature, bytes calldata reclaimPlan) = parsePaymasterAndData(userOp.paymasterAndData);
+        (uint48 validUntil, uint48 validAfter, address _tokenAddress, uint256 _creditAmount, uint256 _debitAmount, bytes calldata signature, bytes calldata reclaimPlan) = parsePaymasterAndData(claimData);
         
-        uint256 currentNonce = claimNonce[userOp.sender];
-        bytes32 expectedHash = getClaimHash(userOp, validUntil, validAfter, _tokenAddress, _creditAmount);
+        uint256 currentNonce = claimNonce[msg.sender];
+        bytes32 expectedHash = getClaimHash(msg.sender, validUntil, validAfter, _tokenAddress, _creditAmount);
         
         bytes32 hash = ECDSA.toEthSignedMessageHash(expectedHash);
         
@@ -403,22 +403,22 @@ contract EnclaveVirtualLiquidityVault is
         console.log("Solver verification passed");
 
         if (_tokenAddress == NATIVE_ADDRESS) {
-            (bool success, ) = userOp.sender.call{value: _creditAmount}("");
+            (bool success, ) = msg.sender.call{value: _creditAmount}("");
             require(success, "ETH transfer failed");
             console.log("Transfer completed A");
         } else {
-            SafeERC20.safeTransfer(IERC20(_tokenAddress), userOp.sender, _creditAmount);
+            SafeERC20.safeTransfer(IERC20(_tokenAddress), msg.sender, _creditAmount);
             console.log("Transfer completed B");
         }
 
-        bytes32 transactionId = keccak256(abi.encode(block.chainid, userOp.sender, currentNonce));
+        bytes32 transactionId = keccak256(abi.encode(block.chainid, msg.sender, currentNonce));
 
         _triggerSettlement(reclaimPlan, transactionId);
         console.log("Settlement triggered");
 
-        claimNonce[userOp.sender]++;
+        claimNonce[msg.sender]++;
 
-        emit SolverSponsored(userOp.sender, _tokenAddress, _creditAmount, _debitAmount, address(this), reclaimPlan, transactionId);
+        emit SolverSponsored(msg.sender, _tokenAddress, _creditAmount, _debitAmount, address(this), reclaimPlan, transactionId);
     }
 
     function inbound(
