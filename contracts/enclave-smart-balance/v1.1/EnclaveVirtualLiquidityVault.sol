@@ -14,7 +14,10 @@ import "../../socket-contracts/IPlug.sol";
 import "../../socket-contracts/ISocket.sol";
 
 import "./EnclaveVaultManager.sol";
+import "./EnclaveSettlementManager.sol";
 import "./CustomBasePaymaster.sol";
+
+import "../interfaces/ISettlementModule.sol";
 
 import "hardhat/console.sol";
 
@@ -33,7 +36,7 @@ contract EnclaveVirtualLiquidityVault is
     UUPSUpgradeable,
     CustomBasePaymaster, 
     EnclaveVaultManager,
-    IPlug 
+    EnclaveSettlementManager
 {
     using ECDSA for bytes32;
     using UserOperationLib for UserOperation;
@@ -43,24 +46,15 @@ contract EnclaveVirtualLiquidityVault is
     mapping(address => uint256) public totalDeposits;
 
     mapping(address => uint256) public senderNonce;
-
-    mapping(uint32 => address) public siblingPlugs;
-
     mapping(address => uint256) public withdrawNonce;
     mapping(address => uint256) public claimNonce;
-    mapping(bytes32 => bool) public settledTransactionIds;
 
-    uint256 public settlementMessageGasLimit;
-    uint256 public settlementMaxBatchSize;
+    mapping(bytes32 => bool) public settledTransactionIds;
 
     event Deposited(address indexed user, address indexed tokenAddress, uint256 amount);
     event Withdrawn(address indexed user, address indexed tokenAddress, uint256 amount, address indexed vaultManager);
     event SolverSponsored(address indexed user, address indexed tokenAddress, uint256 creditAmount, uint256 futureDebitAmount, address indexed paymaster, bytes reclaimPlan, bytes32 transactionId);
     event Claimed(address indexed solver, address indexed tokenAddress, uint256 amount, address indexed owner, bytes32 transactionId);
-
-    address public socket;
-    address public inboundSwitchBoard;   
-    address public outboundSwitchBoard; 
 
     uint256 private constant VALID_TIMESTAMP_OFFSET = 20; // remains the same
     uint256 private constant TOKEN_ADDRESS_OFFSET = 84;   // updated
@@ -79,20 +73,12 @@ contract EnclaveVirtualLiquidityVault is
 
     function initialize(
         address _manager,
-        address _socket,
-        address _inboundSb,
-        address _outboundSb,
         IEntryPoint _entryPoint
     ) public initializer {
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
 
-        socket = _socket;
-        inboundSwitchBoard = _inboundSb;
-        outboundSwitchBoard = _outboundSb;
         _transferOwnership(_manager);
-        settlementMessageGasLimit = 100000;
-        settlementMaxBatchSize = 10;
 
         entryPoint = _entryPoint;
         
@@ -102,11 +88,6 @@ contract EnclaveVirtualLiquidityVault is
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
-
-    modifier onlySocket () {
-        require(msg.sender == socket, "Caller is not Socket");
-        _;
-    }
 
     /**
      * return the hash we're going to sign off-chain (and validate on-chain)
@@ -413,7 +394,11 @@ contract EnclaveVirtualLiquidityVault is
 
         bytes32 transactionId = keccak256(abi.encode(block.chainid, msg.sender, currentNonce));
 
-        _triggerSettlement(reclaimPlan, transactionId);
+        (address settlementModule, bytes memory networkReclaimPlan) = abi.decode(reclaimPlan, (address, bytes));
+
+        require(settlementModuleEnabled[settlementModule], "EnclaveVirtualLiquidityVault: Settlement Module Invalid");
+
+        ISettlementModule(settlementModule).triggerSettlement(networkReclaimPlan, transactionId);
         console.log("Settlement triggered");
 
         claimNonce[msg.sender]++;
@@ -422,22 +407,14 @@ contract EnclaveVirtualLiquidityVault is
     }
 
     function inbound(
-        uint32 srcChainSlug_,
-        bytes calldata _payload
-    ) external payable onlySocket {
-        console.log("Inbound function called");
-        (
-            address userAddress,
-            address tokenAddress,
-            uint256 amount,
-            address receiverAddress,
-            bytes32 transactionId
-        ) = abi.decode(
-            _payload,
-            (address, address, uint256, address, bytes32)
-        );
+        address userAddress,
+        address tokenAddress,
+        uint256 amount,
+        address receiverAddress,
+        bytes32 transactionId
+    ) external payable onlySettlementModule {
+        console.log("Vault: inbound function called");
 
-        console.log("SrcChainSlug: ", srcChainSlug_);
         console.log("User addr: ", userAddress);
         console.log("Token addr: ", tokenAddress);
         console.log("Amount: ", amount);
@@ -449,6 +426,9 @@ contract EnclaveVirtualLiquidityVault is
 
         require(amount > 0, "Amount must be greater than 0");
         console.log("Amount check passed");
+
+        console.log("User balance: ", deposits[tokenAddress][userAddress]);
+        console.log("Settlement Amount: ", amount);
 
         require(deposits[tokenAddress][userAddress] >= amount, "Insufficient balance");
         console.log("Sufficient balance check passed");
@@ -462,70 +442,6 @@ contract EnclaveVirtualLiquidityVault is
 
         emit Claimed(receiverAddress, tokenAddress, amount, userAddress, transactionId);
         console.log("Claim event emitted");
-    }
-
-    function _triggerSettlement(bytes calldata reclaimPlan, bytes32 transactionId) internal {
-        (
-            uint32[] memory chainIds, 
-            address[] memory tokenAddresses,
-            uint256[] memory amounts,
-            address receiverAddress,
-            address userAddress
-        ) = abi.decode(reclaimPlan, (uint32[], address[], uint256[], address, address));
-
-        console.log("Triggering Settlement");
-
-        // Verify arrays have same length
-        require(chainIds.length == tokenAddresses.length && chainIds.length == amounts.length, "Array lengths must match");
-        require(chainIds.length <= settlementMaxBatchSize, "Batch too large");
-
-        console.log("Settlement Plan Length Checks Passed");
-
-        for (uint i = 0; i < chainIds.length;) {
-            _sendSettlementMessage(
-                chainIds[i],
-                settlementMessageGasLimit, // gasLimit - you may want to make this configurable
-                userAddress,
-                tokenAddresses[i],
-                amounts[i],
-                receiverAddress,
-                transactionId
-            );
-            unchecked { ++i; }
-        }
-    }
-
-    function _sendSettlementMessage(
-        uint32 destinationChainSlug,
-        uint256 gasLimit_,
-        address userAddress, 
-        address tokenAddress, 
-        uint256 amount, 
-        address receiverAddress,
-        bytes32 transactionId
-    ) internal {
-        bytes memory payload = abi.encode(userAddress, tokenAddress, amount, receiverAddress, transactionId);
-        uint256 fees = ISocket(socket).getMinFees(
-            gasLimit_, payload.length, bytes32(0), bytes32(0), destinationChainSlug, address(this));
-        
-        console.log("Settlement Fees calculated: ", destinationChainSlug, fees);
-
-        ISocket(
-            socket
-        ).outbound{value: fees}(
-            destinationChainSlug,
-            gasLimit_,
-            bytes32(0),
-            bytes32(0),
-            payload
-        );
-    }
-
-    function connectToPlug(uint32 _remoteChainSlug, address _remotePlug) external onlyVaultManager {
-        ISocket(socket).connect(
-            _remoteChainSlug, _remotePlug, inboundSwitchBoard, outboundSwitchBoard
-        );
-        siblingPlugs[_remoteChainSlug] = _remotePlug;
     }
 
     // Add receive function to accept NATIVE TOKEN

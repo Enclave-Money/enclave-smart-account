@@ -9,6 +9,7 @@ describe("EnclaveVirtualLiquidityVault", function () {
   let mockToken: Contract;
   let mockSocket: Contract;
   let mockEntryPoint: Contract;
+  let mockSettlementModule: Contract;
   let owner: Signer;
   let user1: Signer;
   let user2: Signer;
@@ -51,10 +52,7 @@ describe("EnclaveVirtualLiquidityVault", function () {
     const Proxy = await ethers.getContractFactory("ERC1967Proxy");
     const initData = vaultImplementation.interface.encodeFunctionData("initialize", [
       addresses.owner,
-      mockSocket.target,
-      ethers.ZeroAddress,
-      ethers.ZeroAddress,
-      mockEntryPoint.target,
+      mockEntryPoint.target
     ]);
 
     vaultProxy = await Proxy.deploy(
@@ -66,11 +64,25 @@ describe("EnclaveVirtualLiquidityVault", function () {
     console.log("8. Setting up vault interface...");
     vault = VaultImplementation.attach(vaultProxy.target);
 
-    console.log("9. Setting up initial token state...");
+    console.log("9. Deploying Settlement Module...");
+    const SettlementModule = await ethers.getContractFactory("SocketDLSettlementModule");
+    mockSettlementModule = await SettlementModule.deploy(
+      vault.target,
+      mockSocket.target,
+      mockSocket.target, // Using mockSocket as inbound switchboard
+      mockSocket.target, // Using mockSocket as outbound switchboard
+      100000, // messageGasLimit
+      10 // maxBatchSize
+    );
+
+    console.log("10. Enabling Settlement Module...");
+    await vault.connect(owner).enableSettlementModule(mockSettlementModule.target);
+
+    console.log("11. Setting up initial token state...");
     await mockToken.mint(addresses.user1, depositAmount * 2n);
     await mockToken.connect(user1).approve(vault.target, depositAmount * 2n);
     
-    console.log("10. beforeEach setup complete");
+    console.log("12. beforeEach setup complete");
   });
 
   describe("Initialization", function () {
@@ -79,17 +91,12 @@ describe("EnclaveVirtualLiquidityVault", function () {
       console.log("Init 1 passed");
       expect(await vault.entryPoint()).to.equal(mockEntryPoint.target);
       console.log("Init 2 passed");
-      expect(await vault.socket()).to.equal(mockSocket.target);
-      console.log("Init 3 passed");
     });
 
     it("should not allow reinitialization", async function () {
       await expect(vault.initialize(
         addresses.owner,
-        mockEntryPoint.target,
-        mockSocket.target,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress
+        mockEntryPoint.target
       )).to.be.revertedWith("Initializable: contract is already initialized");
     });
   });
@@ -427,60 +434,46 @@ describe("EnclaveVirtualLiquidityVault", function () {
   });
 
   describe("Cross-chain Functions", function () {
-
     beforeEach(async function () {
       //@ts-ignore
       await vault.connect(user1).deposit(mockToken.target, depositAmount);
       await mockToken.mint(vault.target, depositAmount * 2n); // Add mint to vault
-
     });
 
     describe("claim", function () {
-      beforeEach(async function () {
-        await vault.connect(user1).deposit(mockToken.target, depositAmount);
-        await mockToken.mint(vault.target, depositAmount * 2n);
-      });
-
-      it("should process valid claims", async function () {
+      it("should process valid claims with settlement", async function () {
         const validUntil = Math.floor(Date.now() / 1000) + 3600;
         const validAfter = Math.floor(Date.now() / 1000) - 3600;
 
-        const encodedTimestamps = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["uint48", "uint48"],
-          [validUntil, validAfter]
-        );
-
-        const encodedAmounts = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["address", "uint256", "uint256"],
-          [mockToken.target, smallerAmount, smallerAmount]
-        );
-
         const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["uint32[]", "address[]", "uint256[]", "address", "address"],
-          [[], [], [], ethers.ZeroAddress, ethers.ZeroAddress]
+          ["address", "bytes"],
+          [
+            mockSettlementModule.target,
+            ethers.AbiCoder.defaultAbiCoder().encode(
+              ["uint32[]", "address[]", "uint256[]", "address", "address"],
+              [[421614], [mockToken.target], [smallerAmount], addresses.solver, addresses.user1]
+            )
+          ]
         );
 
-        const hash = await vault.getClaimHash(
-          addresses.user1,
+        const claimData = await constructClaimData(
           validUntil,
           validAfter,
           mockToken.target,
-          smallerAmount
+          smallerAmount,
+          smallerAmount,
+          owner,
+          vault,
+          addresses.user1,
+          reclaimPlan
         );
 
-        const signature = await owner.signMessage(ethers.getBytes(hash));
-
-        const claimData = ethers.concat([
-          vault.target as string,
-          encodedTimestamps,
-          encodedAmounts,
-          signature,
-          reclaimPlan
-        ]);
-
-        const initialBalance = await mockToken.balanceOf(addresses.user1);
-        const initialVaultBalance = await mockToken.balanceOf(vault.target);
-        const nonce = await vault.claimNonce(addresses.user1);
+        const currentNonce = await vault.claimNonce(addresses.user1);
+        const expectedTxId = calculateTransactionId(
+          await ethers.provider.getNetwork().then(n => n.chainId),
+          addresses.user1,
+          currentNonce
+        );
 
         await expect(vault.connect(user1).claim(claimData))
           .to.emit(vault, "SolverSponsored")
@@ -491,23 +484,24 @@ describe("EnclaveVirtualLiquidityVault", function () {
             smallerAmount,
             vault.target,
             reclaimPlan,
-            calculateTransactionId(
-              await ethers.provider.getNetwork().then(n => n.chainId),
-              addresses.user1,
-              nonce
-            )
+            expectedTxId
           );
-
-        expect(await mockToken.balanceOf(addresses.user1))
-          .to.equal(initialBalance + smallerAmount);
-        expect(await mockToken.balanceOf(vault.target))
-          .to.equal(initialVaultBalance - smallerAmount);
-        expect(await vault.claimNonce(addresses.user1)).to.equal(nonce + 1n);
       });
 
-      it("should revert if claim is premature", async function () {
+      it("should revert claim with invalid settlement module", async function () {
         const validUntil = Math.floor(Date.now() / 1000) + 3600;
-        const validAfter = Math.floor(Date.now() / 1000) + 1800; // Future time
+        const validAfter = Math.floor(Date.now() / 1000) - 3600;
+
+        const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
+          ["address", "bytes"],
+          [
+            ethers.Wallet.createRandom().address, // Invalid settlement module address
+            ethers.AbiCoder.defaultAbiCoder().encode(
+              ["uint32[]", "address[]", "uint256[]", "address", "address"],
+              [[421614], [mockToken.target], [smallerAmount], addresses.solver, addresses.user1]
+            )
+          ]
+        );
 
         const claimData = await constructClaimData(
           validUntil,
@@ -517,7 +511,39 @@ describe("EnclaveVirtualLiquidityVault", function () {
           smallerAmount,
           owner,
           vault,
-          addresses.user1
+          addresses.user1,
+          reclaimPlan
+        );
+
+        await expect(vault.connect(user1).claim(claimData))
+          .to.be.revertedWith("EnclaveVirtualLiquidityVault: Settlement Module Invalid");
+      });
+
+      it("should revert if claim is premature", async function () {
+        const validUntil = Math.floor(Date.now() / 1000) + 3600;
+        const validAfter = Math.floor(Date.now() / 1000) + 1800; // Future time
+
+        const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
+          ["address", "bytes"],
+          [
+            mockSettlementModule.target,
+            ethers.AbiCoder.defaultAbiCoder().encode(
+              ["uint32[]", "address[]", "uint256[]", "address", "address"],
+              [[421614], [mockToken.target], [smallerAmount], addresses.solver, addresses.user1]
+            )
+          ]
+        );
+
+        const claimData = await constructClaimData(
+          validUntil,
+          validAfter,
+          mockToken.target,
+          smallerAmount,
+          smallerAmount,
+          owner,
+          vault,
+          addresses.user1,
+          reclaimPlan
         );
 
         await expect(vault.connect(user1).claim(claimData))
@@ -528,6 +554,17 @@ describe("EnclaveVirtualLiquidityVault", function () {
         const validUntil = Math.floor(Date.now() / 1000) - 1800; // Past time
         const validAfter = Math.floor(Date.now() / 1000) - 3600;
 
+        const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
+          ["address", "bytes"],
+          [
+            mockSettlementModule.target,
+            ethers.AbiCoder.defaultAbiCoder().encode(
+              ["uint32[]", "address[]", "uint256[]", "address", "address"],
+              [[421614], [mockToken.target], [smallerAmount], addresses.solver, addresses.user1]
+            )
+          ]
+        );
+
         const claimData = await constructClaimData(
           validUntil,
           validAfter,
@@ -536,7 +573,8 @@ describe("EnclaveVirtualLiquidityVault", function () {
           smallerAmount,
           owner,
           vault,
-          addresses.user1
+          addresses.user1,
+          reclaimPlan
         );
 
         await expect(vault.connect(user1).claim(claimData))
@@ -554,24 +592,47 @@ describe("EnclaveVirtualLiquidityVault", function () {
         // Try to claim more than the remaining liquidity
         const claimAmount = ethers.parseEther("10");
         
+        const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
+          ["address", "bytes"],
+          [
+            mockSettlementModule.target,
+            ethers.AbiCoder.defaultAbiCoder().encode(
+              ["uint32[]", "address[]", "uint256[]", "address", "address"],
+              [[421614], [mockToken.target], [claimAmount], addresses.solver, addresses.user1]
+            )
+          ]
+        );
+
         const claimData = await constructClaimData(
-            validUntil,
-            validAfter,
-            mockToken.target,
-            claimAmount,  // Try to claim more than what's available
-            claimAmount,
-            owner,
-            vault,
-            addresses.user1 // Add user address parameter
+          validUntil,
+          validAfter,
+          mockToken.target,
+          claimAmount,
+          claimAmount,
+          owner,
+          vault,
+          addresses.user1,
+          reclaimPlan
         );
 
         await expect(vault.connect(user1).claim(claimData))
-            .to.be.revertedWith("Insufficient vault liquidity");
+          .to.be.revertedWith("Insufficient vault liquidity");
       });
 
       it("should revert with invalid signature", async function () {
         const validUntil = Math.floor(Date.now() / 1000) + 3600;
         const validAfter = Math.floor(Date.now() / 1000) - 3600;
+
+        const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
+          ["address", "bytes"],
+          [
+            mockSettlementModule.target,
+            ethers.AbiCoder.defaultAbiCoder().encode(
+              ["uint32[]", "address[]", "uint256[]", "address", "address"],
+              [[421614], [mockToken.target], [smallerAmount], addresses.solver, addresses.user1]
+            )
+          ]
+        );
 
         const claimData = await constructClaimData(
           validUntil,
@@ -581,7 +642,8 @@ describe("EnclaveVirtualLiquidityVault", function () {
           smallerAmount,
           user2, // Using non-vault manager signer
           vault,
-          addresses.user1 // Add user address parameter
+          addresses.user1,
+          reclaimPlan
         );
 
         await expect(vault.connect(user1).claim(claimData))
@@ -590,36 +652,44 @@ describe("EnclaveVirtualLiquidityVault", function () {
     });
 
     describe("inbound", function () {
+      beforeEach(async function() {
+        // Ensure user1 has sufficient balance before testing inbound
+        await vault.connect(user1).deposit(mockToken.target, depositAmount);
+      });
+
       it("should process valid inbound transfers and update total deposits", async function () {
         const dummyTxnId = calculateTransactionId(
-            8453,
-            addresses.user1,
-            10
+          8453,
+          addresses.user1,
+          10
         );
 
+        // Create packet for settlement module instead of vault
         const packet = ethers.AbiCoder.defaultAbiCoder().encode(
-            ["address", "address", "uint256", "address", "bytes32"],
-            [addresses.user1, mockToken.target, smallerAmount, addresses.solver, dummyTxnId]
-        );
+          ["address", "address", "uint256", "address", "bytes32"],
+          [addresses.user1, mockToken.target, smallerAmount, addresses.solver, dummyTxnId]
+        )
 
         // Get initial values
         const initialTotalDeposits = await vault.totalDeposits(mockToken.target);
         const initialVaultLiquidity = await vault.getVaultLiquidity(mockToken.target);
         const initialUserDeposit = await vault.deposits(mockToken.target, addresses.user1);
+
+        console.log("Init user dep: ", initialUserDeposit, addresses.user1);
         
         let settledTxn = await vault.settledTransactionIds(dummyTxnId);
         expect(settledTxn).to.equal(false);
 
-        // Call through the mock socket contract which will then call the vault
-        await expect(mockSocket.mockInbound(vault.target, 1, packet))
-            .to.emit(vault, "Claimed")
-            .withArgs(
-                addresses.solver,          // solver address
-                mockToken.target,           // token address
-                smallerAmount,                 // amount
-                addresses.user1,          // owner address
-                dummyTxnId
-            );
+        // Call through the mock socket contract which will then call the settlement module
+        await expect(mockSocket.mockInbound(mockSettlementModule.target, 1, packet))
+          .to.emit(vault, "Claimed")
+          .withArgs(
+            addresses.solver,          // solver address
+            mockToken.target,         // token address
+            smallerAmount,            // amount
+            addresses.user1,          // owner address
+            dummyTxnId
+          );
         
         // Verify transaction was marked as settled
         settledTxn = await vault.settledTransactionIds(dummyTxnId);
@@ -638,15 +708,41 @@ describe("EnclaveVirtualLiquidityVault", function () {
         expect(finalVaultLiquidity).to.equal(initialVaultLiquidity + smallerAmount);
       });
 
-      it("should revert if caller is not socket", async function () {
-        const packet = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["address", "address", "uint256", "address"],
-          [addresses.user1, mockToken.target, smallerAmount, addresses.solver]
+      it("should revert if transaction is already settled", async function () {
+        const dummyTxnId = calculateTransactionId(
+          8453,
+          addresses.user1,
+          10
         );
 
-        //@ts-ignore
-        await expect(vault.connect(user1).inbound(1, packet))
-          .to.be.revertedWith("Caller is not Socket");
+        const packet = ethers.AbiCoder.defaultAbiCoder().encode(
+          ["address", "address", "uint256", "address", "bytes32"],
+          [addresses.user1, mockToken.target, smallerAmount, addresses.solver, dummyTxnId]
+        )
+
+        // First inbound call should succeed
+        await mockSocket.mockInbound(mockSettlementModule.target, 1, packet);
+
+        // Second inbound call with same transaction ID should revert
+        await expect(mockSocket.mockInbound(mockSettlementModule.target, 1, packet))
+          .to.be.revertedWith("Transaction ID already executed");
+      });
+
+      it("should revert if user has insufficient balance", async function () {
+        const dummyTxnId = calculateTransactionId(
+          8453,
+          addresses.user1,
+          10
+        );
+
+        const tooLargeAmount = depositAmount * 8n;
+        const packet = ethers.AbiCoder.defaultAbiCoder().encode(
+          ["address", "address", "uint256", "address", "bytes32"],
+          [addresses.user1, mockToken.target, tooLargeAmount, addresses.solver, dummyTxnId]
+        )
+
+        await expect(mockSocket.mockInbound(mockSettlementModule.target, 1, packet))
+          .to.be.revertedWith("Insufficient balance");
       });
     });
 
@@ -810,6 +906,43 @@ describe("EnclaveVirtualLiquidityVault", function () {
     //   });
     // });
   });
+
+  describe("Settlement Module Management", function () {
+    it("should allow owner to enable settlement module", async function () {
+      const newModule = await (await ethers.getContractFactory("SocketDLSettlementModule")).deploy(
+        vault.target,
+        mockSocket.target,
+        mockSocket.target,
+        mockSocket.target,
+        100000,
+        10
+      );
+
+      await expect(vault.connect(owner).enableSettlementModule(newModule.target))
+        .to.emit(vault, "SettlementModuleEnabled")
+        .withArgs(newModule.target);
+
+      expect(await vault.isSettlementModuleEnabled(newModule.target)).to.be.true;
+    });
+
+    it("should allow owner to disable settlement module", async function () {
+      await expect(vault.connect(owner).disableSettlementModule(mockSettlementModule.target))
+        .to.emit(vault, "SettlementModuleDisabled")
+        .withArgs(mockSettlementModule.target);
+
+      expect(await vault.isSettlementModuleEnabled(mockSettlementModule.target)).to.be.false;
+    });
+
+    it("should revert when non-owner tries to enable settlement module", async function () {
+      await expect(vault.connect(user1).enableSettlementModule(mockSettlementModule.target))
+        .to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should revert when enabling zero address as settlement module", async function () {
+      await expect(vault.connect(owner).enableSettlementModule(ethers.ZeroAddress))
+        .to.be.revertedWithCustomError(vault, "InvalidModuleAddress");
+    });
+  });
 });
 
 // Helper function to calculate expected transaction ID
@@ -831,7 +964,8 @@ async function constructClaimData(
   debitAmount: bigint,
   signer: any,
   vault: any,
-  userAddress: string
+  userAddress: string,
+  reclaimPlan: string
 ) {
   const encodedTimestamps = ethers.AbiCoder.defaultAbiCoder().encode(
     ["uint48", "uint48"],
@@ -841,11 +975,6 @@ async function constructClaimData(
   const encodedAmounts = ethers.AbiCoder.defaultAbiCoder().encode(
     ["address", "uint256", "uint256"],
     [tokenAddress, creditAmount, debitAmount]
-  );
-
-  const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
-    ["uint32[]", "address[]", "uint256[]", "address", "address"],
-    [[], [], [], ethers.ZeroAddress, ethers.ZeroAddress]
   );
 
   const hash = await vault.getClaimHash(

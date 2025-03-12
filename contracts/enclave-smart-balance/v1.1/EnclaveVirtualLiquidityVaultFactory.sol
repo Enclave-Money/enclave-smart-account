@@ -38,7 +38,7 @@ contract EnclaveVirtualLiquidityVaultFactory {
         IEntryPoint _entryPoint,
         uint256 _salt
     ) external returns (EnclaveVirtualLiquidityVault vault) {
-        address addr = getVaultAddress(_manager, _socket, _inboundSb, _outboundSb, _entryPoint, _salt);
+        address addr = getVaultAddress(_manager, _entryPoint, _salt);
         uint256 codeSize = addr.code.length;
         if (codeSize > 0) {
             return EnclaveVirtualLiquidityVault(payable(addr));
@@ -50,7 +50,7 @@ contract EnclaveVirtualLiquidityVaultFactory {
                     address(vaultImplementation),
                     abi.encodeCall(
                         EnclaveVirtualLiquidityVault.initialize,
-                        (_manager, _socket, _inboundSb, _outboundSb, _entryPoint)
+                        (_manager, _entryPoint)
                     )
                 )
             )
@@ -62,18 +62,12 @@ contract EnclaveVirtualLiquidityVaultFactory {
     /**
      * @notice Calculates the deterministic address for a vault before it is deployed
      * @param _manager The manager address for the new vault
-     * @param _socket The socket address for cross-chain communication
-     * @param _inboundSb The inbound switchboard address
-     * @param _outboundSb The outbound switchboard address
      * @param _entryPoint The EntryPoint contract address
      * @param _salt Unique salt for deterministic deployment
      * @return The calculated address of the vault
      */
     function getVaultAddress(
         address _manager,
-        address _socket,
-        address _inboundSb,
-        address _outboundSb,
         IEntryPoint _entryPoint,
         uint256 _salt
     ) public view returns (address) {
@@ -86,7 +80,7 @@ contract EnclaveVirtualLiquidityVaultFactory {
                         address(vaultImplementation),
                         abi.encodeCall(
                             EnclaveVirtualLiquidityVault.initialize,
-                            (_manager, _socket, _inboundSb, _outboundSb, _entryPoint)
+                            (_manager, _entryPoint)
                         )
                     )
                 )
