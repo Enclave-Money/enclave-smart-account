@@ -21,7 +21,6 @@ contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
     EnclaveVirtualLiquidityVault public vault;
     
     mapping(uint32 => address) public siblingPlugs;
-    mapping(bytes32 => bool) public settledTransactionIds;
 
     constructor(
         address _vault,
@@ -140,10 +139,6 @@ contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
         console.log("Amount: ", amount);
         console.log("Receiver Address: ", receiverAddress);
         console.log("Transaction ID: ", uint256(transactionId));
-
-        require(!settledTransactionIds[transactionId], "Transaction ID already executed");
-        settledTransactionIds[transactionId] = true;
-
         console.log("Calling inbound on vault");
 
         // Vault

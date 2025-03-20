@@ -15,6 +15,11 @@ describe("EnclaveVirtualLiquidityVault", function () {
   let user2: Signer;
   let solver: Signer;
   let addresses: { [key: string]: string };
+  let userOp: any;
+  let validUntil: number;
+  let validAfter: number;
+  let tokenAddress: string;
+  let amount: number;
 
   const depositAmount = ethers.parseEther("100");
   const smallerAmount = ethers.parseEther("50");
@@ -83,6 +88,25 @@ describe("EnclaveVirtualLiquidityVault", function () {
     await mockToken.connect(user1).approve(vault.target, depositAmount * 2n);
     
     console.log("12. beforeEach setup complete");
+
+    userOp = {
+      sender: "0xd11b1d18392bEE5a5A95F7e4Abb4bEDfa1Eb6959",
+      initCode: "0x",
+      callData: "0x",
+      nonce: 0,
+      callGasLimit: 198891,
+      verificationGasLimit: 1000000,
+      preVerificationGas: 300000,
+      maxFeePerGas: 506,
+      maxPriorityFeePerGas: 0,
+      paymasterAndData: "0x",
+      signature: "0x"
+    };
+
+    validUntil = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+    validAfter = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
+    tokenAddress = "0xf09156042741F67F8099D17eB22638F01F97974b";
+    amount = 15000;
   });
 
   describe("Initialization", function () {
@@ -100,6 +124,67 @@ describe("EnclaveVirtualLiquidityVault", function () {
       )).to.be.revertedWith("Initializable: contract is already initialized");
     });
   });
+
+  // ... existing code ...
+
+  describe("Ownership Transfer", function () {
+    it("should allow the owner to transfer ownership", async function () {
+      await vault.connect(owner).transferOwnership(addresses.user1);
+      expect(await vault.owner()).to.equal(addresses.user1);
+    });
+
+    it("should prevent non-owners from transferring ownership", async function () {
+      await expect(vault.connect(user1).transferOwnership(addresses.user2))
+        .to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  // ... existing code ...
+
+  // ... existing code ...
+
+  describe("Contract Upgrade", function () {
+    it("should upgrade the contract implementation", async function () {
+      // Deploy a new implementation
+      const NewVaultImplementation = await ethers.getContractFactory("TestEnclaveVirtualLiquidityVault");
+      const newVaultImplementation = await NewVaultImplementation.deploy(mockEntryPoint.target);
+      await newVaultImplementation.waitForDeployment();
+
+      // Upgrade the proxy to the new implementation
+      await vault.connect(owner).upgradeTo(newVaultImplementation.target);
+
+      // Verify the new implementation is in use
+      const upgradedVault = NewVaultImplementation.attach(vaultProxy.target);
+      expect(await upgradedVault.newFunctionality()).to.equal(1);
+    });
+
+    it("should not upgrade the contract implementation when caller is not owner", async function () {
+      // Deploy a new implementation
+      const NewVaultImplementation = await ethers.getContractFactory("TestEnclaveVirtualLiquidityVault");
+      const newVaultImplementation = await NewVaultImplementation.deploy(mockEntryPoint.target);
+      await newVaultImplementation.waitForDeployment();
+
+      await expect(vault.connect(user1).upgradeTo(newVaultImplementation.target))
+        .to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should preserve state across upgrades", async function () {
+      // Assume some state is set in the original contract
+      await vault.connect(user1).deposit(mockToken.target, depositAmount);
+
+      // Deploy and upgrade to the new implementation
+      const NewVaultImplementation = await ethers.getContractFactory("TestEnclaveVirtualLiquidityVault");
+      const newVaultImplementation = await NewVaultImplementation.deploy(mockEntryPoint.target);
+      await newVaultImplementation.waitForDeployment();
+      await vault.connect(owner).upgradeTo(newVaultImplementation.target);
+
+      // Verify state is preserved
+      const upgradedVault = NewVaultImplementation.attach(vaultProxy.target);
+      expect(await upgradedVault.deposits(mockToken.target, addresses.user1)).to.equal(depositAmount);
+    });
+  });
+
+// ... existing code ...
 
   describe("Deposit Functions", function () {
     describe("deposit", function () {
@@ -431,6 +516,34 @@ describe("EnclaveVirtualLiquidityVault", function () {
         expect(await vault.deposits(await vault.NATIVE_ADDRESS(), addresses.user1)).to.equal(0);
       });
     });
+
+    describe("withdrawToken", function () {
+      it("should allow withdrawal of native token", async function () {
+        const nativeAmount = ethers.parseEther("1.0");
+
+        // Assuming the vault has some native token balance
+        const initialBalance = await vault.getVaultLiquidity(await vault.NATIVE_ADDRESS());
+
+        await owner.sendTransaction({
+          to: vault.target,
+          value: nativeAmount,
+        }).then(tx => tx.wait()); // Wait for transaction to be mined
+
+        const interBalance = await vault.getVaultLiquidity(await vault.NATIVE_ADDRESS());
+
+        expect(interBalance).to.equal(nativeAmount);
+
+        await expect(vault.connect(owner).withdrawToken(
+          await vault.NATIVE_ADDRESS(),
+          nativeAmount
+        ))
+          .to.emit(vault, "TokenWithdrawn")
+          .withArgs(await vault.NATIVE_ADDRESS(), addresses.owner, nativeAmount);
+
+        const finalBalance = await vault.getVaultLiquidity(await vault.NATIVE_ADDRESS());
+        expect(finalBalance).to.equal(initialBalance);
+      });
+    });
   });
 
   describe("Cross-chain Functions", function () {
@@ -616,7 +729,7 @@ describe("EnclaveVirtualLiquidityVault", function () {
         );
 
         await expect(vault.connect(user1).claim(claimData))
-          .to.be.revertedWith("Insufficient vault liquidity");
+          .to.be.revertedWith("Claim: Insufficient vault liquidity");
       });
 
       it("should revert with invalid signature", async function () {
@@ -649,6 +762,60 @@ describe("EnclaveVirtualLiquidityVault", function () {
         await expect(vault.connect(user1).claim(claimData))
           .to.be.revertedWith("Paymaster: Invalid claim signature");
       });
+
+      it("should process valid claims with settlement for native token", async function () {
+        const validUntil = Math.floor(Date.now() / 1000) + 3600;
+        const validAfter = Math.floor(Date.now() / 1000) - 3600;
+        const nativeAmount = ethers.parseEther("1.0");
+
+        // First send native token to the vault
+        await owner.sendTransaction({
+          to: vault.target,
+          value: nativeAmount,
+        }).then(tx => tx.wait());
+
+        const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
+          ["address", "bytes"],
+          [
+            mockSettlementModule.target,
+            ethers.AbiCoder.defaultAbiCoder().encode(
+              ["uint32[]", "address[]", "uint256[]", "address", "address"],
+              [[421614], [await vault.NATIVE_ADDRESS()], [nativeAmount], addresses.solver, addresses.user1]
+            )
+          ]
+        );
+
+        const claimData = await constructClaimData(
+          validUntil,
+          validAfter,
+          await vault.NATIVE_ADDRESS(),
+          nativeAmount,
+          nativeAmount,
+          owner,
+          vault,
+          addresses.user1,
+          reclaimPlan
+        );
+
+        const currentNonce = await vault.claimNonce(addresses.user1);
+        const expectedTxId = calculateTransactionId(
+          await ethers.provider.getNetwork().then(n => n.chainId),
+          addresses.user1,
+          currentNonce
+        );
+
+        await expect(vault.connect(user1).claim(claimData))
+          .to.emit(vault, "SolverSponsored")
+          .withArgs(
+            addresses.user1,
+            await vault.NATIVE_ADDRESS(),
+            nativeAmount,
+            nativeAmount,
+            vault.target,
+            reclaimPlan,
+            expectedTxId
+          );
+      });
     });
 
     describe("inbound", function () {
@@ -657,89 +824,104 @@ describe("EnclaveVirtualLiquidityVault", function () {
         await vault.connect(user1).deposit(mockToken.target, depositAmount);
       });
 
-      it("should process valid inbound transfers and update total deposits", async function () {
-        const dummyTxnId = calculateTransactionId(
-          8453,
-          addresses.user1,
-          10
-        );
+      it("should process valid inbound transfers with zero receiver address", async function () {
+        const dummyTxnId = calculateTransactionId(8453, addresses.user1, 10);
 
-        // Create packet for settlement module instead of vault
+        // Create packet with address(0) as receiver
         const packet = ethers.AbiCoder.defaultAbiCoder().encode(
           ["address", "address", "uint256", "address", "bytes32"],
-          [addresses.user1, mockToken.target, smallerAmount, addresses.solver, dummyTxnId]
-        )
+          [addresses.user1, mockToken.target, smallerAmount, ethers.ZeroAddress, dummyTxnId]
+        );
 
         // Get initial values
         const initialTotalDeposits = await vault.totalDeposits(mockToken.target);
-        const initialVaultLiquidity = await vault.getVaultLiquidity(mockToken.target);
         const initialUserDeposit = await vault.deposits(mockToken.target, addresses.user1);
 
-        console.log("Init user dep: ", initialUserDeposit, addresses.user1);
-        
-        let settledTxn = await vault.settledTransactionIds(dummyTxnId);
-        expect(settledTxn).to.equal(false);
-
-        // Call through the mock socket contract which will then call the settlement module
+        // Call through the mock socket contract
         await expect(mockSocket.mockInbound(mockSettlementModule.target, 1, packet))
           .to.emit(vault, "Claimed")
           .withArgs(
-            addresses.solver,          // solver address
-            mockToken.target,         // token address
-            smallerAmount,            // amount
-            addresses.user1,          // owner address
+            ethers.ZeroAddress,
+            mockToken.target,
+            smallerAmount,
+            addresses.user1,
             dummyTxnId
           );
-        
+
         // Verify transaction was marked as settled
-        settledTxn = await vault.settledTransactionIds(dummyTxnId);
-        expect(settledTxn).to.equal(true);
+        expect(await vault.settledTransactionIds(dummyTxnId)).to.equal(true);
 
         // Verify deposit changes
-        const finalUserDeposit = await vault.deposits(mockToken.target, addresses.user1);
-        expect(finalUserDeposit).to.equal(initialUserDeposit - smallerAmount);
+        expect(await vault.deposits(mockToken.target, addresses.user1))
+          .to.equal(initialUserDeposit - smallerAmount);
 
-        // Verify total deposits decreased by the same amount
-        const finalTotalDeposits = await vault.totalDeposits(mockToken.target);
-        expect(finalTotalDeposits).to.equal(initialTotalDeposits - smallerAmount);
+        // Verify total deposits decreased
+        expect(await vault.totalDeposits(mockToken.target))
+          .to.equal(initialTotalDeposits - smallerAmount);
+      });
 
-        // Verify vault liquidity increased by the same amount
-        const finalVaultLiquidity = await vault.getVaultLiquidity(mockToken.target);
-        expect(finalVaultLiquidity).to.equal(initialVaultLiquidity + smallerAmount);
+      it("should process valid inbound transfers with non-zero receiver address", async function () {
+        const dummyTxnId = calculateTransactionId(8453, addresses.user1, 10);
+
+        // Create packet with solver as receiver
+        const packet = ethers.AbiCoder.defaultAbiCoder().encode(
+          ["address", "address", "uint256", "address", "bytes32"],
+          [addresses.user1, mockToken.target, smallerAmount, addresses.solver, dummyTxnId]
+        );
+
+        // Get initial values
+        const initialTotalDeposits = await vault.totalDeposits(mockToken.target);
+        const initialUserDeposit = await vault.deposits(mockToken.target, addresses.user1);
+        const initialReceiverDeposit = await vault.deposits(mockToken.target, addresses.solver);
+
+        // Call through the mock socket contract
+        await expect(mockSocket.mockInbound(mockSettlementModule.target, 1, packet))
+          .to.emit(vault, "Claimed")
+          .withArgs(
+            addresses.solver,
+            mockToken.target,
+            smallerAmount,
+            addresses.user1,
+            dummyTxnId
+          );
+
+        // Verify transaction was marked as settled
+        expect(await vault.settledTransactionIds(dummyTxnId)).to.equal(true);
+
+        // Verify sender's deposit decreased
+        expect(await vault.deposits(mockToken.target, addresses.user1))
+          .to.equal(initialUserDeposit - smallerAmount);
+
+        // Verify receiver's deposit increased
+        expect(await vault.deposits(mockToken.target, addresses.solver))
+          .to.equal(initialReceiverDeposit + smallerAmount);
+
+        // Verify total deposits remained unchanged
+        expect(await vault.totalDeposits(mockToken.target))
+          .to.equal(initialTotalDeposits);
       });
 
       it("should revert if transaction is already settled", async function () {
-        const dummyTxnId = calculateTransactionId(
-          8453,
-          addresses.user1,
-          10
-        );
+        const dummyTxnId = calculateTransactionId(8453, addresses.user1, 10);
 
         const packet = ethers.AbiCoder.defaultAbiCoder().encode(
           ["address", "address", "uint256", "address", "bytes32"],
           [addresses.user1, mockToken.target, smallerAmount, addresses.solver, dummyTxnId]
-        )
+        );
 
-        // First inbound call should succeed
         await mockSocket.mockInbound(mockSettlementModule.target, 1, packet);
-
-        // Second inbound call with same transaction ID should revert
         await expect(mockSocket.mockInbound(mockSettlementModule.target, 1, packet))
           .to.be.revertedWith("Transaction ID already executed");
       });
 
       it("should revert if user has insufficient balance", async function () {
-        const dummyTxnId = calculateTransactionId(
-          8453,
-          addresses.user1,
-          10
-        );
-
+        const dummyTxnId = calculateTransactionId(8453, addresses.user1, 10);
         const tooLargeAmount = depositAmount * 8n;
+
         const packet = ethers.AbiCoder.defaultAbiCoder().encode(
           ["address", "address", "uint256", "address", "bytes32"],
           [addresses.user1, mockToken.target, tooLargeAmount, addresses.solver, dummyTxnId]
-        )
+        );
 
         await expect(mockSocket.mockInbound(mockSettlementModule.target, 1, packet))
           .to.be.revertedWith("Insufficient balance");
@@ -943,6 +1125,70 @@ describe("EnclaveVirtualLiquidityVault", function () {
         .to.be.revertedWithCustomError(vault, "InvalidModuleAddress");
     });
   });
+
+  describe("getVaultLiquidity", function () {
+    beforeEach(async function () {
+      // Ensure the vault has some native token balance
+      const nativeAmount = ethers.parseEther("5.0");
+      await owner.sendTransaction({
+        to: vault.target,
+        value: nativeAmount,
+      });
+    });
+
+    it("should return correct liquidity for native token when there are no deposits", async function () {
+      const liquidity = await vault.getVaultLiquidity(await vault.NATIVE_ADDRESS());
+      expect(liquidity).to.equal(ethers.parseEther("5.0"));
+    });
+
+    it("should return correct liquidity for native token after a deposit", async function () {
+      const depositAmount = ethers.parseEther("2.0");
+      await vault.connect(user1).deposit(
+        await vault.NATIVE_ADDRESS(),
+        depositAmount,
+        { value: depositAmount }
+      );
+
+      const liquidity = await vault.getVaultLiquidity(await vault.NATIVE_ADDRESS());
+      expect(liquidity).to.equal(ethers.parseEther("5.0"));
+    });
+  });
+
+  describe("getHash", function () {
+    it("should return the correct hash for a given UserOperation", async function () {
+      console.log("userOp.sender:", userOp.sender);
+      console.log("vault.address:", vaultProxy.target);
+      console.log("tokenAddress:", tokenAddress);
+
+      const expectedHash = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          [
+            "address",
+            "uint256",
+            "address",
+            "uint256",
+            "uint48",
+            "uint48",
+            "address",
+            "uint256"
+          ],
+          [
+            userOp.sender,
+            await ethers.provider.getNetwork().then(n => n.chainId),
+            vaultProxy.target,
+            await vault.senderNonce(userOp.sender),
+            validUntil,
+            validAfter,
+            tokenAddress,
+            amount
+          ]
+        )
+      );
+
+      const hash = await vault.getHash(userOp, validUntil, validAfter, tokenAddress, amount);
+      expect(hash).to.equal(expectedHash);
+    });
+  });
 });
 
 // Helper function to calculate expected transaction ID
@@ -982,7 +1228,8 @@ async function constructClaimData(
     validUntil,
     validAfter,
     tokenAddress,
-    creditAmount
+    creditAmount,
+    reclaimPlan
   );
 
   const signature = await signer.signMessage(ethers.getBytes(hash));

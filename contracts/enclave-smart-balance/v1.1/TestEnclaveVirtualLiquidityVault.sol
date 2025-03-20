@@ -30,7 +30,7 @@ import "hardhat/console.sol";
  * Subsequent versions will include: Liquidity provisioning, multiple solvers, inbuilt rebalancing 
  */
 
-contract EnclaveVirtualLiquidityVault is 
+contract TestEnclaveVirtualLiquidityVault is 
     Initializable,
     ReentrancyGuardUpgradeable,
     UUPSUpgradeable,
@@ -55,7 +55,6 @@ contract EnclaveVirtualLiquidityVault is
     event Withdrawn(address indexed user, address indexed tokenAddress, uint256 amount, address indexed vaultManager);
     event SolverSponsored(address indexed user, address indexed tokenAddress, uint256 creditAmount, uint256 futureDebitAmount, address indexed paymaster, bytes reclaimPlan, bytes32 transactionId);
     event Claimed(address indexed solver, address indexed tokenAddress, uint256 amount, address indexed owner, bytes32 transactionId);
-    event TokenWithdrawn(address indexed tokenAddress, address indexed vaultManager, uint256 amount);
 
     uint256 private constant VALID_TIMESTAMP_OFFSET = 20; // remains the same
     uint256 private constant TOKEN_ADDRESS_OFFSET = 84;   // updated
@@ -361,8 +360,6 @@ contract EnclaveVirtualLiquidityVault is
         } else {
             SafeERC20.safeTransfer(IERC20(_tokenAddress), msg.sender, _amount);
         }
-
-        emit TokenWithdrawn(_tokenAddress, msg.sender, _amount);
     }
 
     function claim(bytes calldata claimData) public nonReentrant() {
@@ -425,7 +422,7 @@ contract EnclaveVirtualLiquidityVault is
         console.log("Receiver addr: ", receiverAddress);
         console.log("Transaction Id: ", uint256(transactionId));
 
-        require(!settledTransactionIds[transactionId], "Transaction ID already executed");
+        require(!settledTransactionIds[transactionId], "Transaction ID already executed on this chain");
         console.log("Transaction ID check passed");
 
         require(amount > 0, "Amount must be greater than 0");
@@ -450,6 +447,10 @@ contract EnclaveVirtualLiquidityVault is
 
         emit Claimed(receiverAddress, tokenAddress, amount, userAddress, transactionId);
         console.log("Claim event emitted");
+    }
+
+    function newFunctionality() pure external returns (uint256) {
+        return 1;
     }
 
     // Add receive function to accept NATIVE TOKEN

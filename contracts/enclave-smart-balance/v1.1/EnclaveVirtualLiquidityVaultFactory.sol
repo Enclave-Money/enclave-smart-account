@@ -23,18 +23,12 @@ contract EnclaveVirtualLiquidityVaultFactory {
     /**
      * @notice Creates a new vault and returns its address
      * @param _manager The manager address for the new vault
-     * @param _socket The socket address for cross-chain communication
-     * @param _inboundSb The inbound switchboard address
-     * @param _outboundSb The outbound switchboard address
      * @param _entryPoint The EntryPoint contract address
      * @param _salt Unique salt for deterministic deployment
      * @return vault The address of the newly deployed vault
      */
     function createVault(
         address _manager,
-        address _socket,
-        address _inboundSb,
-        address _outboundSb,
         IEntryPoint _entryPoint,
         uint256 _salt
     ) external returns (EnclaveVirtualLiquidityVault vault) {

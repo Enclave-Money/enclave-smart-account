@@ -1,7 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import "solidity-coverage";
 require('dotenv').config();
-
 
 let mnemonic = 'test '.repeat(11) + 'junk'
 
@@ -17,7 +17,7 @@ function getNetwork1(url: string) {
 function getNetwork2(url: string) {
   return {
     url,
-    accounts: [process.env.ODYSSEY_TEST_KEY as string],
+    accounts: [process.env.ODYSSEY_TEST_KEY as string, process.env.PRIVATE_KEY2 as string],
     loggingEnabled: true,
     traces: true,
   };
@@ -120,10 +120,11 @@ const config: HardhatUserConfig = {
     // arbSepolia: getNetwork1("https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
 
     // Test Balance Network Configs
-    sepolia: getNetworkTestBalance("https://sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
+    sepolia: getNetwork2("https://sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
     opSepolia: getNetwork2("https://optimism-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
     arbSepolia: getNetwork2("https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
-    odyssey: getNetwork1("https://odyssey.ithaca.xyz"),
+    odyssey: getNetwork2("https://odyssey.ithaca.xyz"),
+    monadtest: getNetwork2("https://testnet-rpc.monad.xyz"),
     //////////////////////////////////////////////////////////////
     
     amoy: getNetwork1("https://polygon-amoy.infura.io/v3/" + process.env.INFURA_API_KEY),

@@ -1,14 +1,17 @@
 import { ethers } from "hardhat";
 
 async function main() {
-    const [signer] = await ethers.getSigners();
+    const [s0, signer] = await ethers.getSigners();
 
     console.log("SIGNER: ", signer.address);
 
-    const recipientAddress = '0xf716DE79d0781614203BBB53951296E629fEb7fb';
+    const initialBalance = await ethers.provider.getBalance(signer.address);
+    console.log("Initial balance:", ethers.formatEther(initialBalance), "ETH");
+
+    const recipientAddress = s0.address;
     // const recipientAddress = '0xd11b1d18392bEE5a5A95F7e4Abb4bEDfa1Eb6959';
     // const recipientAddress = '0xca590F4dfEcD2763c11918b759EFF1FF709E77B0';
-    const amountInEther = '0.0001'; // Amount to send in ETH
+    const amountInEther = '1'; // Amount to send in ETH
 
     const tx = await signer.sendTransaction({
         to: recipientAddress,
