@@ -1,0 +1,39 @@
+{
+    "10143": {
+        "socket": {
+            "socket": "0x5C4186D343EeF952c9ED886E45F8243edf0A503F",
+            "switchboard": "0xe1e0d782E3b4985f1d657f77B683897AeA6b7dC9"
+        },
+        "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+
+        "vaultFactory": "0x3A00500789894fA8b908b0cDa9983E6d55895DA5",
+        "vault": "0x324f22509b485a3225Dc404528886952eE24c494",
+        "module": "0x37F2F1F2d2B543C03f3c31B916b43e444285A728"
+    },
+    "11155420": {
+        "socket": {
+            "socket": "0xEA59E2b1539b514290dD3dCEa989Ea36279aC6F2",
+            "switchboard": "0xB9EDe9aaEaA40e35033ABBC872D141950d08cc4d"
+        },
+        "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+
+        "vaultFactory": "0x38289FB6b3F744D1855D8dd0524BcC75c05acdEc",
+        "vault": "0x783971804ADd81286C6f236c0F8D6eDeBa8AdDFd",
+        "module": "0xB3d4Fff2f856Aa562edF1ceF0c79FA7e5443da94",
+
+        "token": "0xE6Ee959cb60b8bdB86816f0f892587B745fd3667"
+    },
+    "421614": {
+        "socket": {
+            "socket": "0xEA59E2b1539b514290dD3dCEa989Ea36279aC6F2",
+            "switchboard": "0xB9EDe9aaEaA40e35033ABBC872D141950d08cc4d"
+        },
+        "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+
+        "vaultFactory": "0xE6Ee959cb60b8bdB86816f0f892587B745fd3667",
+        "vault": "0x87178F391869fE8D075832AD37c026dD2Cf0Fe19",
+        "module": "0x3117f774BC5a018787C9716BA992a465A85A5d27",
+
+        "token": "0xA374460eb5EA5Ea29361b4Cf4053A0A822aA5250"
+    }
+}

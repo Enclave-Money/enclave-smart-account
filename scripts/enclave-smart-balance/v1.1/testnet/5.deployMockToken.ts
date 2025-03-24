@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import * as testnetContracts from "../../../../config/testnetContracts.json";
-import { ARB_SEPOLIA_SLUG, ODYSSEY_SLUG, OP_SEPOLIA_SLUG } from "../../../demo/socket/constants";
+import { ARB_SEPOLIA_SLUG, MONAD_TEST_SLUG, ODYSSEY_SLUG, OP_SEPOLIA_SLUG } from "../../../demo/socket/constants";
 
 async function main() {
     const [deployer, secondAddress] = await ethers.getSigners();
@@ -8,17 +8,17 @@ async function main() {
     console.log("Second address:", secondAddress.address);
 
     // Get the network configuration
-    const ACTIVE_SLUG = OP_SEPOLIA_SLUG;
+    const ACTIVE_SLUG = MONAD_TEST_SLUG;
 
     // Deploy MockUSDC
     const MockUSDC = await ethers.getContractFactory("MockUSDC");
-    // const mockToken = await MockUSDC.deploy(
-    //     "Mock Token",
-    //     "MTK"
-    // );
-    // await mockToken.waitForDeployment();
+    const mockToken = await MockUSDC.deploy(
+        "Mock Token",
+        "MTK"
+    );
+    await mockToken.waitForDeployment();
 
-    const mockToken = MockUSDC.attach(testnetContracts[ACTIVE_SLUG].token);
+    // const mockToken = MockUSDC.attach(testnetContracts[ACTIVE_SLUG].token);
     console.log("MockToken deployed to:", mockToken.target);
 
     // Get vault contract instance
@@ -32,17 +32,17 @@ async function main() {
     console.log(`Minted ${ethers.formatEther(vaultMintAmount)} tokens to vault`);
 
     // Mint 1000 tokens to second address
-    const secondAddressMintAmount = ethers.parseEther("1000");
-    await mockToken.mint(secondAddress.address, secondAddressMintAmount);
-    console.log(`Minted ${ethers.formatEther(secondAddressMintAmount)} tokens to second address`);
+    // const secondAddressMintAmount = ethers.parseEther("1000");
+    // await mockToken.mint(secondAddress.address, secondAddressMintAmount);
+    // console.log(`Minted ${ethers.formatEther(secondAddressMintAmount)} tokens to second address`);
 
-    // Approve vault to spend tokens from second address
-    await mockToken.connect(secondAddress).approve(vault.target, secondAddressMintAmount);
-    console.log("Approved vault to spend tokens from second address");
+    // // Approve vault to spend tokens from second address
+    // await mockToken.connect(secondAddress).approve(vault.target, secondAddressMintAmount);
+    // console.log("Approved vault to spend tokens from second address");
 
-    // Deposit tokens from second address to vault
-    await vault.connect(secondAddress).deposit(mockToken.target, secondAddressMintAmount);
-    console.log(`Deposited ${ethers.formatEther(secondAddressMintAmount)} tokens from second address to vault`);
+    // // Deposit tokens from second address to vault
+    // await vault.connect(secondAddress).deposit(mockToken.target, secondAddressMintAmount);
+    // console.log(`Deposited ${ethers.formatEther(secondAddressMintAmount)} tokens from second address to vault`);
 
     // Print final balances
     const vaultBalance = await mockToken.balanceOf(vault.target);

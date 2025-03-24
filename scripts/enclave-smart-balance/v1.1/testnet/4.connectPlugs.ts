@@ -10,26 +10,27 @@ async function main() {
   const SettlementModule = await ethers.getContractFactory("SocketDLSettlementModule");
 
   // Transfer 0.005 ETH to the module
-  console.log("\nTransferring 0.005 ETH to settlement module...");
-  try {
-    const tx = await deployer.sendTransaction({
-      to: testnetContracts[OP_SEPOLIA_SLUG].module,
-      value: ethers.parseEther("0.005")
-    });
-    await tx.wait();
-    console.log("✓ Successfully transferred 0.005 ETH to module");
-  } catch (error) {
-    console.error("Failed to transfer ETH to module:", error);
-  }
+  // console.log("\nTransferring 0.005 ETH to settlement module...");
+  // try {
+  //   const tx = await deployer.sendTransaction({
+  //     to: testnetContracts[MONAD_TEST_SLUG].module,
+  //     value: ethers.parseEther("0.005"),
+  //     gasLimit: 1000000
+  //   });
+  //   await tx.wait();
+  //   console.log("✓ Successfully transferred 0.005 ETH to module");
+  // } catch (error) {
+  //   console.error("Failed to transfer ETH to module:", error);
+  // }
 
   // Connect Arbitrum Sepolia to OP Sepolia
   console.log("\nConnecting A to B...");
-  const settlementModule = SettlementModule.attach(testnetContracts[OP_SEPOLIA_SLUG].module);
+  const settlementModule = SettlementModule.attach(testnetContracts[ARB_SEPOLIA_SLUG].module);
 
   try {
     const tx1 = await settlementModule.connectToPlug(
-      ARB_SEPOLIA_SLUG,
-      testnetContracts[ARB_SEPOLIA_SLUG].module
+      MONAD_TEST_SLUG,
+      testnetContracts[MONAD_TEST_SLUG].module
     );
     await tx1.wait();
     console.log("✓ A connected to B");
@@ -41,8 +42,8 @@ async function main() {
   // console.log("\nConnecting A to C...");
   // try {
   //   const tx3 = await settlementModule.connectToPlug(
-  //     MONAD_TEST_SLUG,
-  //     testnetContracts[MONAD_TEST_SLUG].module
+  //     OP_SEPOLIA_SLUG,
+  //     testnetContracts[OP_SEPOLIA_SLUG].module
   //   );
   //   await tx3.wait();
   //   console.log("✓ A connected to C");
