@@ -9,7 +9,14 @@
         "vaultFactory": "0x0819ACD03Db0565dbCBBf49852187C0b10bf93fc",
         "vault": "0x1c819116A4a32d9a8b74860B277554E1A6fcd7FB",
         "module": "0x5F94dcBC13837E395b471775407505939DF6972A",
-        "token": "0xD2a05eE55Bd94A8E09670281fb7c5891579A408e"
+        "token": "0xD2a05eE55Bd94A8E09670281fb7c5891579A408e",
+
+        "enclaveRegistry": "0xeb5169aA2d2FF4c73D6E534F927dccEec4864C21",
+        "enclaveModuleManager": "0xD42A521742A8f9328fAF498b8bEEa29eFEEaAa9F",
+        "smartAccountECDSAValidator": "0x5144b244774f89aD766aadD5ab72e9f9F24e4655",
+        "smartAccountFactoryV1": "0x8dbf2c01d73334a45192317fE1E92E8aA63f9eda",
+        "smartAccountFactoryV1Implementation": "0xA77a56a9310bEfC8DeE91BCB03fe4987A6170765",
+        "smartAccountV1": "0x158304a8fdb1b594c21e14b2cc9010664bc69c79"
     },
     "11155111": {
         "socket": {
@@ -34,7 +41,14 @@
         "vault": "0x783971804ADd81286C6f236c0F8D6eDeBa8AdDFd",
         "module": "0xDC8A5873Cd976e1B6e66C9a1570eA9a84e9ca073",
 
-        "token": "0xE6Ee959cb60b8bdB86816f0f892587B745fd3667"
+        "token": "0xE6Ee959cb60b8bdB86816f0f892587B745fd3667",
+
+        "enclaveRegistry": "0xf8D2b1849237895e67179937F09D739fFA822282",
+        "enclaveModuleManager": "0xf08cb9409a1f6D761a81369F9e2E4f54638C5B96",
+        "smartAccountECDSAValidator": "0x5144b244774f89aD766aadD5ab72e9f9F24e4655",
+        "smartAccountFactoryV1": "0x8dbf2c01d73334a45192317fE1E92E8aA63f9eda",
+        "smartAccountFactoryV1Implementation": "0xA77a56a9310bEfC8DeE91BCB03fe4987A6170765",
+        "smartAccountV1": "0x0427634fBC64C57232B33B287343d8bF1bA36010"
     },
     "421614": {
         "socket": {
@@ -50,7 +64,14 @@
         "vault": "0x87178F391869fE8D075832AD37c026dD2Cf0Fe19",
         "module": "0xeA853cb360C9Fc0CCb0E50142F5534d25e5dE56e",
 
-        "token": "0xA374460eb5EA5Ea29361b4Cf4053A0A822aA5250"
+        "token": "0xA374460eb5EA5Ea29361b4Cf4053A0A822aA5250",
+
+        "enclaveRegistry": "0xf8D2b1849237895e67179937F09D739fFA822282",
+        "enclaveModuleManager": "0xf08cb9409a1f6D761a81369F9e2E4f54638C5B96",
+        "smartAccountECDSAValidator": "0x5144b244774f89aD766aadD5ab72e9f9F24e4655",
+        "smartAccountFactoryV1": "0x8dbf2c01d73334a45192317fE1E92E8aA63f9eda",
+        "smartAccountFactoryV1Implementation": "0xA77a56a9310bEfC8DeE91BCB03fe4987A6170765",
+        "smartAccountV1": "0x0427634fBC64C57232B33B287343d8bF1bA36010"
     },
     "911867": {
         "socket": {
