@@ -108,15 +108,15 @@ const config: HardhatUserConfig = {
     //     // }
     //   },
     //   dev2: {url: "https://127.0.0.1:4200"},
-    arbitrumSepolia: {
-      url: "https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
+    arbSep: {
+      url: "https://arb-sepolia.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY,
       accounts: [process.env.PRIVATE_KEY as string], // replace with your private key
     },
     //   // sepolia: {
     //   //   url: "https://sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
     //   //   accounts: [process.env.PRIVATE_KEY as string], // replace with your private key
     //   // },
-    opSepolia: getNetwork1("https://optimism-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
+    opSep: getNetwork1("https://opt-sepolia.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY),
     //   // arbSepolia: getNetwork1("https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
 
     //   // Test Balance Network Configs
@@ -124,7 +124,7 @@ const config: HardhatUserConfig = {
     //   opSepolia: getNetwork2("https://optimism-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
     //   arbSepolia: getNetwork2("https://arbitrum-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY),
     //   odyssey: getNetwork2("https://odyssey.ithaca.xyz"),
-    monadtest: getNetwork2("https://monad-testnet.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY),
+    monadTest: getNetwork2("https://monad-testnet.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY),
     //   //////////////////////////////////////////////////////////////
 
     //   amoy: getNetwork1("https://polygon-amoy.infura.io/v3/" + process.env.INFURA_API_KEY),

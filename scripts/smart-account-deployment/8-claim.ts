@@ -1,37 +1,8 @@
 import { BigNumberish, Block, BytesLike, JsonRpcProvider, parseEther, toBeHex, toBigInt, ZeroAddress } from "ethers";
 import { ethers } from "hardhat";
+import * as testnetContracts from "../../config/testnetContracts.json";
+import { ARB_SEPOLIA_SLUG, OP_SEPOLIA_SLUG, MONAD_TEST_SLUG } from "../demo/socket/constants";
 
-// Define UserOperation type
-interface UserOperation {
-    sender: string;
-    nonce: bigint | string;
-    initCode: string;
-    callData: string;
-    callGasLimit: bigint | string;
-    verificationGasLimit: bigint | string;
-    preVerificationGas: bigint | string;
-    maxFeePerGas: bigint | string;
-    maxPriorityFeePerGas: bigint;
-    paymasterAndData: string;
-    signature: string;
-}
-
-// Helper function to convert UserOperation to JSON-serializable format
-function serializeUserOp(userOp: UserOperation) {
-    return {
-        sender: userOp.sender,
-        nonce: userOp.nonce.toString(),
-        initCode: userOp.initCode,
-        callData: userOp.callData,
-        callGasLimit: userOp.callGasLimit.toString(),
-        verificationGasLimit: userOp.verificationGasLimit.toString(),
-        preVerificationGas: userOp.preVerificationGas.toString(),
-        maxFeePerGas: userOp.maxFeePerGas,
-        maxPriorityFeePerGas: userOp.maxPriorityFeePerGas,
-        paymasterAndData: userOp.paymasterAndData,
-        signature: userOp.signature
-    };
-}
 
 async function main() {
     const wallet = new ethers.Wallet(process.env.TEST_KEY as string, ethers.provider);
@@ -40,16 +11,19 @@ async function main() {
     console.log("Creating claim UserOperation with account:", deployer.address);
 
     // Get required addresses
-    const smartAccountAddress = "0x158304a8fdb1b594c21e14b2cc9010664bc69c79"; // Monad
+    const smartAccountAddress = testnetContracts[MONAD_TEST_SLUG].smartAccountV1;
     const vaultAddresses = {
-        monad: "0x1c819116A4a32d9a8b74860B277554E1A6fcd7FB",
-        arbitrum: "0x87178F391869fE8D075832AD37c026dD2Cf0Fe19",
-        optimism: "0x783971804ADd81286C6f236c0F8D6eDeBa8AdDFd"
+        monad: testnetContracts[MONAD_TEST_SLUG].vault,
+        arbitrum: testnetContracts[ARB_SEPOLIA_SLUG].vault,
+        optimism: testnetContracts[OP_SEPOLIA_SLUG].vault
     };
-    const entryPointAddress = "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789";
-    const tokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"; // ETH
+    const entryPointAddress = testnetContracts[MONAD_TEST_SLUG].entrypoint;
+    const USDCAddressArbitrum = testnetContracts[ARB_SEPOLIA_SLUG].USDC;
+    const USDCAddressOptimism = testnetContracts[OP_SEPOLIA_SLUG].USDC;
+    const USDCAddressMonad = testnetContracts[MONAD_TEST_SLUG].USDC;
     const solverAddress = ZeroAddress;
-    const settlementModuleAddress = "0x52DCf8861883d58f08f974aF51A007d68756E378"; // Monad
+    const settlementModuleAddress = testnetContracts[MONAD_TEST_SLUG].module;
+    const receiverAddress = "0xaB47abB694fD7eFAa85C94B11c5B31547D593189"; // The address that will receive the USDC
 
     // Connect to contracts
     const SmartAccountV1 = await ethers.getContractFactory("SmartAccountV1");
@@ -59,13 +33,19 @@ async function main() {
     const entryPoint = await ethers.getContractAt("IEntryPoint", entryPointAddress);
 
     // Claim amounts from each chain
-    const arbitrumAmount = ethers.parseEther("0.001");
-    const optimismAmount = ethers.parseEther("0.002");
-    const totalAmount = arbitrumAmount + optimismAmount;
+    const arbitrumAmount = BigInt(10 * 10 ** 6); // 10 USDC
+    const optimismAmount = BigInt(5 * 10 ** 6); // 5 USDC
+    const totalAmount = arbitrumAmount + optimismAmount; // Claiming 15 USDC
+
+    // Create USDC ERC20 interface for transfer
+    const USDC = (await ethers.getContractAt(
+		"IERC20",
+		USDCAddressMonad
+	)) as any
 
     // Time validity parameters
     const validUntil = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-    const validAfter = Math.floor(Date.now() / 1000) - 60; // 1 minute ago
+    const validAfter = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
 
     // Create reclaim plan for deducting from Arbitrum and Optimism
     const reclaimPlan = ethers.AbiCoder.defaultAbiCoder().encode(
@@ -76,7 +56,7 @@ async function main() {
                 ["uint32[]", "address[]", "uint256[]", "address", "address"],
                 [
                     [421614, 11155420], // Arbitrum and Optimism Sepolia chain IDs
-                    [tokenAddress, tokenAddress], // Same token on both chains
+                    [USDCAddressArbitrum, USDCAddressOptimism], // Same token on both chains
                     [arbitrumAmount, optimismAmount], // Amounts to deduct from each chain
                     solverAddress,
                     smartAccountAddress
@@ -85,14 +65,14 @@ async function main() {
         ]
     );
 
-    const creditAmount = totalAmount;
-    const debitAmount = totalAmount + ethers.parseEther("0.0001");
+    const creditAmount = totalAmount - BigInt(1 * 10 ** 6); // 1 USDC less than total amount 
+    const debitAmount = totalAmount;
 
     // Construct claim data
     const claimData = await constructClaimData(
         validUntil,
         validAfter,
-        tokenAddress,
+        testnetContracts[MONAD_TEST_SLUG].USDC,
         creditAmount,
         debitAmount,
         wallet,
@@ -105,28 +85,34 @@ async function main() {
 
     // Create calldata for the claim function
     const vaultClaimData = monadVault.interface.encodeFunctionData("claim", [claimData]);
+
+    // Create transfer calldata - transfer all claimed USDC to the receiver
+    const transferCalldata = USDC.interface.encodeFunctionData("transfer", [
+        receiverAddress,
+        creditAmount
+    ]);
     
     // Construct smart account executeBatch call with multiple transactions
-    // const smartAccountEncodedData = smartAccount.interface.encodeFunctionData("executeBatch", [
-    //     [
-    //         vaultAddresses.monad,                         // First target: vault
-    //         "0xaB47abB694fD7eFAa85C94B11c5B31547D593189"  // Second target: specified address
-    //     ],
-    //     [
-    //         0,                                            // First value: 0 ETH
-    //         parseEther("0.0005")                                             // Second value: 0 ETH
-    //     ],
-    //     [
-    //         vaultClaimData,                               // First calldata: claim
-    //         "0x"                                          // Second calldata: empty (simple interaction)
-    //     ]
-    // ]);
-
-    const smartAccountEncodedData = smartAccount.interface.encodeFunctionData("execute", [
-        vaultAddresses.monad,
-        0,
-        vaultClaimData
+    const smartAccountEncodedData = smartAccount.interface.encodeFunctionData("executeBatch", [
+        [
+            vaultAddresses.monad,                         // First target: vault
+            USDCAddressMonad                              // Second target: USDC token contract
+        ],
+        [
+            0,                                            // First value: 0 ETH
+            0                                             // Second value: 0 ETH
+        ],
+        [
+            vaultClaimData,                               // First calldata: claim USDC
+            transferCalldata                              // Second calldata: transfer USDC directly
+        ]
     ]);
+
+    // const smartAccountEncodedData = smartAccount.interface.encodeFunctionData("execute", [
+    //     vaultAddresses.monad,
+    //     0,
+    //     vaultClaimData
+    // ]);
 
     console.log("Smart Account Encoded Data:", smartAccountEncodedData);
 
@@ -214,21 +200,13 @@ async function main() {
     );
 
     const txReceipt = await rpcProvider.getTransactionReceipt(userOpTx.hash);
-    console.log("Transaction Receipt:", txReceipt);
 
-    const block = await rpcProvider.getBlock(txReceipt?.blockNumber as number);
-    console.log("Block:", block);
+    console.log("Claim Txn Hash:", txReceipt?.hash);
 
-    const result = {
-        txnHash: userOpTx.hash,
-        blockHash: txReceipt?.blockHash,
-        timestamp: block?.timestamp,
-    }
-
-    console.log("RESULT:", result);
-    console.log("Claimed", ethers.formatEther(totalAmount), "ETH on Monad");
-    console.log("Deducted", ethers.formatEther(arbitrumAmount), "ETH from Arbitrum");
-    console.log("Deducted", ethers.formatEther(optimismAmount), "ETH from Optimism");
+    console.log("Claimed", totalAmount, "USDC on Monad");
+    console.log("Deducted", arbitrumAmount, "USDC from Arbitrum");
+    console.log("Deducted", optimismAmount, "USDC from Optimism");
+    console.log("Transferred", ethers.formatUnits(creditAmount, 6), "USDC to receiver:", receiverAddress);
 }
 
 async function constructClaimData(
