@@ -33,8 +33,8 @@ async function main() {
     const entryPoint = await ethers.getContractAt("IEntryPoint", entryPointAddress);
 
     // Claim amounts from each chain
-    const arbitrumAmount = BigInt(10 * 10 ** 6); // 10 USDC
-    const optimismAmount = BigInt(5 * 10 ** 6); // 5 USDC
+    const arbitrumAmount = BigInt(2 * 10 ** 6); // 10 USDC
+    const optimismAmount = BigInt(10 * 10 ** 6); // 5 USDC
     const totalAmount = arbitrumAmount + optimismAmount; // Claiming 15 USDC
 
     // Create USDC ERC20 interface for transfer
@@ -64,6 +64,8 @@ async function main() {
             )
         ]
     );
+
+    console.log("Reclaim plan:", reclaimPlan);
 
     const creditAmount = totalAmount - BigInt(1 * 10 ** 6); // 1 USDC less than total amount 
     const debitAmount = totalAmount;
@@ -165,7 +167,7 @@ async function main() {
     console.log("UserOp hash:", userOpHash);
 
     // Use validator address from your smart account setup
-    const validator = "0x5144b244774f89aD766aadD5ab72e9f9F24e4655";
+    const validator = testnetContracts[MONAD_TEST_SLUG].validator;
 
     // Sign the userOpHash
     const signature = await deployer.signMessage(ethers.getBytes(userOpHash));
@@ -189,6 +191,10 @@ async function main() {
     } catch (verifyError) {
         console.log("Signature Verification Failed:", verifyError);
     }
+
+    console.log("UserOp:", userOp);
+
+    return;
 
     // Submit UserOperation
     const userOpTx = await entryPoint.handleOps(

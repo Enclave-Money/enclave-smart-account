@@ -8,7 +8,7 @@ let mnemonic = 'test '.repeat(11) + 'junk'
 function getNetwork1(url: string) {
   return {
     url,
-    accounts: [process.env.PRIVATE_KEY as string],
+    accounts: [process.env.DEMO_KEY as string],
     loggingEnabled: true,
     traces: true,
   };
@@ -17,7 +17,7 @@ function getNetwork1(url: string) {
 function getNetwork2(url: string) {
   return {
     url,
-    accounts: [process.env.PRIVATE_KEY as string],
+    accounts: [process.env.DEMO_KEY as string],
     loggingEnabled: true,
     traces: true,
   };
@@ -110,7 +110,7 @@ const config: HardhatUserConfig = {
     //   dev2: {url: "https://127.0.0.1:4200"},
     arbSep: {
       url: "https://arb-sepolia.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY,
-      accounts: [process.env.PRIVATE_KEY as string], // replace with your private key
+      accounts: [process.env.DEMO_KEY as string], // replace with your private key
     },
     //   // sepolia: {
     //   //   url: "https://sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,

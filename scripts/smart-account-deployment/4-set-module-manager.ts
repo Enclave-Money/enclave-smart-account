@@ -1,11 +1,19 @@
 import { ethers } from "hardhat";
+import * as testnetContracts from "../../config/testnetContracts.json";
+import {
+	ARB_SEPOLIA_SLUG,
+	OP_SEPOLIA_SLUG,
+	MONAD_TEST_SLUG,
+} from "../demo/socket/constants";
 
 async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Setting ModuleManager in EnclaveRegistry with account:", deployer.address);
   
-  const enclaveRegistryAddress = "0xf8D2b1849237895e67179937F09D739fFA822282";
-  const enclaveModuleManagerAddress = "0xf08cb9409a1f6D761a81369F9e2E4f54638C5B96";
+  const currentSlug = ARB_SEPOLIA_SLUG;
+  
+  const enclaveRegistryAddress = testnetContracts[currentSlug].enclaveRegistry;
+  const enclaveModuleManagerAddress = testnetContracts[currentSlug].enclaveModuleManager;
 
   console.log(`Using EnclaveRegistry at: ${enclaveRegistryAddress}`);
   console.log(`Using EnclaveModuleManager at: ${enclaveModuleManagerAddress}`);

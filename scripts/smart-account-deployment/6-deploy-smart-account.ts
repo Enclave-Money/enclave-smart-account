@@ -1,32 +1,42 @@
 import { ethers } from "hardhat";
+import * as testnetContracts from "../../config/testnetContracts.json";
+import {
+	ARB_SEPOLIA_SLUG,
+	OP_SEPOLIA_SLUG,
+	MONAD_TEST_SLUG,
+} from "../demo/socket/constants";
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
-  console.log("Deploying SmartAccount with the account:", deployer.address);
+	const [deployer] = await ethers.getSigners();
+	console.log("Deploying SmartAccount with the account:", deployer.address);
 
-  // Get required addresses
-  const factoryAddress = "0x8dbf2c01d73334a45192317fE1E92E8aA63f9eda";
-  const enclaveRegistry = "0xf8D2b1849237895e67179937F09D739fFA822282";
+	const currentSlug = ARB_SEPOLIA_SLUG;
 
-  // The owner address for the smart account (this can be an EOA or another contract)
-  const ownerAddress = deployer.address;
-  console.log(`Using owner address: ${ownerAddress}`);
+	// Get required addresses
+	const factoryAddress = testnetContracts[currentSlug].smartAccountFactoryV1;
+	const enclaveRegistry = testnetContracts[currentSlug].enclaveRegistry;
 
-  // Connect to the factory contract
-  const SmartAccountFactoryV1 = await ethers.getContractFactory("SmartAccountFactoryV1");
-  const factory = SmartAccountFactoryV1.attach(factoryAddress) as any; 
+	// The owner address for the smart account (this can be an EOA or another contract)
+	const ownerAddress = deployer.address;
 
-  const salt = "0x0000000000000000000000000000000000000000000000000000000000000000";
+	// Connect to the factory contract
+	const SmartAccountFactoryV1 = await ethers.getContractFactory(
+		"SmartAccountFactoryV1"
+	);
+	const factory = SmartAccountFactoryV1.attach(factoryAddress) as any;
 
-  // Create the SmartAccount
-  const tx = await factory.createAccount(ownerAddress, enclaveRegistry, salt);
-  const receipt = await tx.wait();
-  console.log("Account created at:", receipt);
+	const salt =
+		"0x0000000000000000000000000000000000000000000000000000000000000000";
+
+	// Create the SmartAccount
+	const tx = await factory.createAccount(ownerAddress, enclaveRegistry, salt);
+
+	console.log("Transaction hash:", tx.hash);
+
+    return;
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
 main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-}); 
+	console.error(error);
+	process.exitCode = 1;
+});

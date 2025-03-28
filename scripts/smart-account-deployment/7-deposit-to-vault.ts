@@ -23,8 +23,8 @@ async function main() {
 	// const rpcProvider = new ethers.JsonRpcProvider(
 	// 	`https://arb-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
 	// );
-    
-    const rpcProvider = new ethers.JsonRpcProvider(
+
+	const rpcProvider = new ethers.JsonRpcProvider(
 		`https://opt-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
 	);
 
@@ -112,7 +112,7 @@ async function main() {
 		callDataGasLimit,
 	});
 
-	const validator = "0x5144b244774f89aD766aadD5ab72e9f9F24e4655";
+	const validator = testnetContracts[currentSlug].smartAccountECDSAValidator;
 
 	const op = getInitialUserOp(
 		testnetContracts[currentSlug].smartAccountV1,
@@ -141,7 +141,6 @@ async function main() {
 		[validator, signature]
 	);
 
-	console.log("UserOp Hash:", userOpHash);
 	console.log("Raw Signature:", signature);
 	console.log("Encoded Signature:", encodedSig);
 	console.log("Validator Address:", validator);
@@ -179,7 +178,7 @@ async function main() {
 	const txReceipt = await rpcProvider.getTransactionReceipt(userOpTx.hash);
 
 	console.log("Txn Hash:", userOpTx.hash);
-	console.log("Approved and deposited", depositAmount, "USDC to vault");
+	console.log("Approved and deposited", ethers.formatUnits(depositAmount, 6), "USDC to vault");
 }
 
 const getGasFee = async (provider: JsonRpcProvider) => {

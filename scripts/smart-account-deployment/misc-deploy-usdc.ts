@@ -26,7 +26,7 @@ async function main() {
 
   await usdc.mint(vaultAddress, initialSupply);
 
-  console.log(`Minted ${initialSupply / BigInt(10 ** 6)} USDC to the vault address: ${vaultAddress}`);
+  console.log(`Minted ${ethers.formatUnits(initialSupply, 6)} USDC to the vault address: ${vaultAddress}`);
 }
 
 main().catch((error) => {

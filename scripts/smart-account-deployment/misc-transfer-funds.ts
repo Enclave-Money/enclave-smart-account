@@ -6,9 +6,11 @@ async function main() {
 		ethers.provider
 	);
 
+	console.log("Using wallet", wallet.address);
+
 	const tx = await wallet.sendTransaction({
-		to: "0x88B37912a1De8C31244941cD5739fDC1354980a3",
-		value: ethers.parseEther("0.5"),
+		to: "0xe3838a038456f29428bb2FD097e0D52Cc2D03dCC",
+		value: ethers.parseEther("0.2"),
 	});
 
 	const receipt = await tx.wait();

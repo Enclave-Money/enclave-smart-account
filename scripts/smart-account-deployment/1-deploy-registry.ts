@@ -6,7 +6,7 @@ async function main() {
 
   // Deploy EnclaveRegistry
   const EnclaveRegistry = await ethers.getContractFactory("EnclaveRegistry");
-  const enclaveRegistry = await EnclaveRegistry.deploy("0x88B37912a1De8C31244941cD5739fDC1354980a3");
+  const enclaveRegistry = await EnclaveRegistry.deploy(deployer.address);
   await enclaveRegistry.waitForDeployment();
   
   const registryAddress = await enclaveRegistry.getAddress();
@@ -18,7 +18,7 @@ async function main() {
   console.log(`Set entryPoint (${entryPointAddress}) in registry`);
   
   // Set moduleManagerEoa in the registry
-  const moduleManagerEoaAddress = "0x88B37912a1De8C31244941cD5739fDC1354980a3";
+  const moduleManagerEoaAddress = deployer.address;
   await enclaveRegistry.updateRegistryAddress("moduleManagerEoa", moduleManagerEoaAddress);
   console.log(`Set moduleManagerEoa (${moduleManagerEoaAddress}) in registry`);
 

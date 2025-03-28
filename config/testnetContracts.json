@@ -1,93 +1,92 @@
 {
-    "10143": {
-        "socket": {
-            "socket": "0x5C4186D343EeF952c9ED886E45F8243edf0A503F",
-            "switchboard": "0xe1e0d782E3b4985f1d657f77B683897AeA6b7dC9"
-        },
-        "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+	"10143": {
+		"socket": {
+			"socket": "0x5C4186D343EeF952c9ED886E45F8243edf0A503F",
+			"switchboard": "0xe1e0d782E3b4985f1d657f77B683897AeA6b7dC9"
+		},
+		"entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
 
-        "vaultFactory": "0x0819ACD03Db0565dbCBBf49852187C0b10bf93fc",
-        "vault": "0x1c819116A4a32d9a8b74860B277554E1A6fcd7FB",
-        "module": "0x5F94dcBC13837E395b471775407505939DF6972A",
+		"vaultFactory": "0x0819ACD03Db0565dbCBBf49852187C0b10bf93fc",
+		"vault": "0x1c819116A4a32d9a8b74860B277554E1A6fcd7FB",
+		"module": "0x5F94dcBC13837E395b471775407505939DF6972A",
 
-        "token": "0xD2a05eE55Bd94A8E09670281fb7c5891579A408e",
-        "USDC": "0xd50e9c8c527e0d88bf8e94d4067431e6a5b5e9bf",
+		"token": "0xD2a05eE55Bd94A8E09670281fb7c5891579A408e",
+		"USDC": "0xd50e9c8c527e0d88bf8e94d4067431e6a5b5e9bf",
 
-        "enclaveRegistry": "0xeb5169aA2d2FF4c73D6E534F927dccEec4864C21",
-        "enclaveModuleManager": "0xD42A521742A8f9328fAF498b8bEEa29eFEEaAa9F",
-        "smartAccountECDSAValidator": "0x5144b244774f89aD766aadD5ab72e9f9F24e4655",
-        "smartAccountFactoryV1": "0x8dbf2c01d73334a45192317fE1E92E8aA63f9eda",
-        "smartAccountFactoryV1Implementation": "0xA77a56a9310bEfC8DeE91BCB03fe4987A6170765",
-        "smartAccountV1": "0x158304a8fdb1b594c21e14b2cc9010664bc69c79"
-    },
-    "11155111": {
-        "socket": {
-            "socket": "0x07e11D1A1543B0D0b91684eb741d1ab7D51ae237",
-            "switchboard": "0x501fCBa3e6F92b2D1d89038FeD56EdacaaF5f7c2"
-        },
-        "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
-        "vaultFactory": "0x3A00500789894fA8b908b0cDa9983E6d55895DA5",
-        "vault": "0x324f22509b485a3225Dc404528886952eE24c494",
-        "module": "0x676f658A7d3b7dBcdb4b024dF022463FD8b78b3D"
-    },
-    "11155420": {
-        "socket": {
-            "socket": "0xCF8dc30B0c79eA64D6D82f0bb9258176E88004C6",
-            "switchboard": "0xeDA3cFD23DA02CB14E36125c2E8709a4574D9f04",
-            "plug": "0xC346BFBd8Ab8b8bf15f1B7e71a25b4001F715317"
-        },
-        "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+		"enclaveRegistry": "0x7BB99bAC7EFef4F9892b67C1C5e02d90d76C4523",
+		"enclaveModuleManager": "0xdC03fe3324e00Eb5a39d639C5B360AbbF524C597",
+		"smartAccountECDSAValidator": "0xd469AaA22BDdEC96B60FEd66f367De914Fe1b490",
+		"smartAccountFactoryV1": "0xeAA7e51b851e82020f70c30E206B73f1DD209F1c",
+		"smartAccountFactoryV1Implementation": "0x6e6B354CbEcF443590F7deF651149Cbc714f2CC7",
+		"smartAccountV1": "0xD01cDC650F78Cf0BbB01064947025c15e6c60Fbc"
+	},
+	"11155111": {
+		"socket": {
+			"socket": "0x07e11D1A1543B0D0b91684eb741d1ab7D51ae237",
+			"switchboard": "0x501fCBa3e6F92b2D1d89038FeD56EdacaaF5f7c2"
+		},
+		"entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+		"vaultFactory": "0x3A00500789894fA8b908b0cDa9983E6d55895DA5",
+		"vault": "0x324f22509b485a3225Dc404528886952eE24c494",
+		"module": "0x676f658A7d3b7dBcdb4b024dF022463FD8b78b3D"
+	},
+	"11155420": {
+		"socket": {
+			"socket": "0xCF8dc30B0c79eA64D6D82f0bb9258176E88004C6",
+			"switchboard": "0xeDA3cFD23DA02CB14E36125c2E8709a4574D9f04",
+			"plug": "0xC346BFBd8Ab8b8bf15f1B7e71a25b4001F715317"
+		},
+		"entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
 
-        "vaultFactory": "0x38289FB6b3F744D1855D8dd0524BcC75c05acdEc",
-        "vault": "0x783971804ADd81286C6f236c0F8D6eDeBa8AdDFd",
-        "module": "0xDC8A5873Cd976e1B6e66C9a1570eA9a84e9ca073",
+		"vaultFactory": "0x38289FB6b3F744D1855D8dd0524BcC75c05acdEc",
+		"vault": "0x783971804ADd81286C6f236c0F8D6eDeBa8AdDFd",
+		"module": "0xDC8A5873Cd976e1B6e66C9a1570eA9a84e9ca073",
 
-        "token": "0xE6Ee959cb60b8bdB86816f0f892587B745fd3667",
-        "USDC": "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
+		"token": "0xE6Ee959cb60b8bdB86816f0f892587B745fd3667",
+		"USDC": "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
 
-        "enclaveRegistry": "0xf8D2b1849237895e67179937F09D739fFA822282",
-        "enclaveModuleManager": "0xf08cb9409a1f6D761a81369F9e2E4f54638C5B96",
-        "smartAccountECDSAValidator": "0x5144b244774f89aD766aadD5ab72e9f9F24e4655",
-        "smartAccountFactoryV1": "0x8dbf2c01d73334a45192317fE1E92E8aA63f9eda",
-        "smartAccountFactoryV1Implementation": "0xA77a56a9310bEfC8DeE91BCB03fe4987A6170765",
-        "smartAccountV1": "0x0427634fBC64C57232B33B287343d8bF1bA36010"
-    },
-    "421614": {
-        "socket": {
-            "socket": "0x5798C2D27Db969fda2E43dE0871C21823E6418B8",
-            "switchboard": "0x545549DF14D755af886168987f3be621D6Ed3FaD",
-            "plug": "0xA14e8efA8C14c3D529B0640c4526cec0263dB8Cd"
-        },
-        "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+		"enclaveRegistry": "0x7BB99bAC7EFef4F9892b67C1C5e02d90d76C4523",
+		"enclaveModuleManager": "0xdC03fe3324e00Eb5a39d639C5B360AbbF524C597",
+		"smartAccountECDSAValidator": "0xd469AaA22BDdEC96B60FEd66f367De914Fe1b490",
+		"smartAccountFactoryV1": "0xeAA7e51b851e82020f70c30E206B73f1DD209F1c",
+		"smartAccountFactoryV1Implementation": "0x6e6B354CbEcF443590F7deF651149Cbc714f2CC7",
+		"smartAccountV1": "0xD01cDC650F78Cf0BbB01064947025c15e6c60Fbc"
+	},
+	"421614": {
+		"socket": {
+			"socket": "0x5798C2D27Db969fda2E43dE0871C21823E6418B8",
+			"switchboard": "0x545549DF14D755af886168987f3be621D6Ed3FaD",
+			"plug": "0xA14e8efA8C14c3D529B0640c4526cec0263dB8Cd"
+		},
+		"entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
 
+		"vaultFactory": "0xE6Ee959cb60b8bdB86816f0f892587B745fd3667",
+		"vault": "0x87178F391869fE8D075832AD37c026dD2Cf0Fe19",
+		"module": "0xeA853cb360C9Fc0CCb0E50142F5534d25e5dE56e",
 
-        "vaultFactory": "0xE6Ee959cb60b8bdB86816f0f892587B745fd3667",
-        "vault": "0x87178F391869fE8D075832AD37c026dD2Cf0Fe19",
-        "module": "0xeA853cb360C9Fc0CCb0E50142F5534d25e5dE56e",
+		"token": "0xA374460eb5EA5Ea29361b4Cf4053A0A822aA5250",
+		"USDC": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
 
-        "token": "0xA374460eb5EA5Ea29361b4Cf4053A0A822aA5250",
-        "USDC": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+		"enclaveRegistry": "0x7BB99bAC7EFef4F9892b67C1C5e02d90d76C4523",
+		"enclaveModuleManager": "0xdC03fe3324e00Eb5a39d639C5B360AbbF524C597",
+		"smartAccountECDSAValidator": "0xd469AaA22BDdEC96B60FEd66f367De914Fe1b490",
+		"smartAccountFactoryV1": "0xeAA7e51b851e82020f70c30E206B73f1DD209F1c",
+		"smartAccountFactoryV1Implementation": "0x6e6B354CbEcF443590F7deF651149Cbc714f2CC7",
+		"smartAccountV1": "0xD01cDC650F78Cf0BbB01064947025c15e6c60Fbc"
+	},
+	"911867": {
+		"socket": {
+			"socket": "0x5C4186D343EeF952c9ED886E45F8243edf0A503F",
+			"switchboard": "0xe1e0d782E3b4985f1d657f77B683897AeA6b7dC9",
+			"plug": "0xa99a02cD010FcCd22bfEd6dE9f2F6292dfa46aa5"
+		},
+		"usdc": "0x9c6c2ac4639303f034755171F07C4DBa3dF3232A",
+		"entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+		"nft": "0x34C721C1c4419Fec2f406eAA4DB9b0213E82eA59",
 
-        "enclaveRegistry": "0xf8D2b1849237895e67179937F09D739fFA822282",
-        "enclaveModuleManager": "0xf08cb9409a1f6D761a81369F9e2E4f54638C5B96",
-        "smartAccountECDSAValidator": "0x5144b244774f89aD766aadD5ab72e9f9F24e4655",
-        "smartAccountFactoryV1": "0x8dbf2c01d73334a45192317fE1E92E8aA63f9eda",
-        "smartAccountFactoryV1Implementation": "0xA77a56a9310bEfC8DeE91BCB03fe4987A6170765",
-        "smartAccountV1": "0x0427634fBC64C57232B33B287343d8bF1bA36010"
-    },
-    "911867": {
-        "socket": {
-            "socket": "0x5C4186D343EeF952c9ED886E45F8243edf0A503F",
-            "switchboard": "0xe1e0d782E3b4985f1d657f77B683897AeA6b7dC9",
-            "plug": "0xa99a02cD010FcCd22bfEd6dE9f2F6292dfa46aa5"
-        },
-        "usdc": "0x9c6c2ac4639303f034755171F07C4DBa3dF3232A",
-        "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
-        "nft": "0x34C721C1c4419Fec2f406eAA4DB9b0213E82eA59",
-
-        "vaultFactory": "0xa08349C7BFcA0Ac301460008B97017057CA52488",
-        "vault": "0x66B6F30E2B4e4E1667e5536c4D0D512FAF3CC46b",
-        "module": "0x37F2F1F2d2B543C03f3c31B916b43e444285A728",
-        "token": "0x33D4c765E66d42334c6512768Dbbe47D6EaC2665"
-    }
+		"vaultFactory": "0xa08349C7BFcA0Ac301460008B97017057CA52488",
+		"vault": "0x66B6F30E2B4e4E1667e5536c4D0D512FAF3CC46b",
+		"module": "0x37F2F1F2d2B543C03f3c31B916b43e444285A728",
+		"token": "0x33D4c765E66d42334c6512768Dbbe47D6EaC2665"
+	}
 }
