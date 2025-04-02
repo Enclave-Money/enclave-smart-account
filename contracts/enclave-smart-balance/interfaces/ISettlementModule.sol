@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface ISettlementModule {
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+
+interface ISettlementModule is IERC165 {
     /**
      * @notice Triggers settlement across multiple chains
      * @param reclaimPlan Encoded plan containing chain IDs, token addresses, amounts, and recipient info

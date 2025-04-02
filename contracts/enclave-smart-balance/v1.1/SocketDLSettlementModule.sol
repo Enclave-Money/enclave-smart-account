@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../../socket-contracts/ISocket.sol";
 import "../../socket-contracts/IPlug.sol";
 
@@ -11,15 +13,15 @@ import "../interfaces/ISettlementModule.sol";
 
 import "hardhat/console.sol";
 
-contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
+contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug, ERC165 {
     address public socket;
-    address public inboundSwitchBoard;   
+    address public inboundSwitchBoard;
     address public outboundSwitchBoard;
     uint256 public settlementMessageGasLimit;
     uint256 public settlementMaxBatchSize;
 
     EnclaveVirtualLiquidityVault public vault;
-    
+
     mapping(uint32 => address) public siblingPlugs;
 
     constructor(
@@ -38,28 +40,46 @@ contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
         settlementMaxBatchSize = _maxBatchSize;
     }
 
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(ERC165, IERC165) returns (bool) {
+        return
+            interfaceId == type(ISettlementModule).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
     function triggerSettlement(
-        bytes calldata reclaimPlan, 
+        bytes calldata reclaimPlan,
         bytes32 transactionId
     ) external {
-        require(msg.sender == address(vault), "SettlementModule: Invalid caller for triggerSettlement");
+        require(
+            msg.sender == address(vault),
+            "SettlementModule: Invalid caller for triggerSettlement"
+        );
 
         (
-            uint32[] memory chainIds, 
+            uint32[] memory chainIds,
             address[] memory tokenAddresses,
             uint256[] memory amounts,
             address receiverAddress,
             address userAddress
-        ) = abi.decode(reclaimPlan, (uint32[], address[], uint256[], address, address));
+        ) = abi.decode(
+                reclaimPlan,
+                (uint32[], address[], uint256[], address, address)
+            );
 
         console.log("Triggering Settlement");
 
-        require(chainIds.length == tokenAddresses.length && chainIds.length == amounts.length, "Array lengths must match");
+        require(
+            chainIds.length == tokenAddresses.length &&
+                chainIds.length == amounts.length,
+            "Array lengths must match"
+        );
         require(chainIds.length <= settlementMaxBatchSize, "Batch too large");
 
         console.log("Settlement Plan Length Checks Passed");
 
-        for (uint i = 0; i < chainIds.length;) {
+        for (uint i = 0; i < chainIds.length; ) {
             _sendSettlementMessage(
                 chainIds[i],
                 settlementMessageGasLimit,
@@ -69,7 +89,9 @@ contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
                 receiverAddress,
                 transactionId
             );
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
 
         emit SettlementTriggered(transactionId, chainIds);
@@ -78,22 +100,28 @@ contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
     function _sendSettlementMessage(
         uint32 destinationChainSlug,
         uint256 gasLimit_,
-        address userAddress, 
-        address tokenAddress, 
-        uint256 amount, 
+        address userAddress,
+        address tokenAddress,
+        uint256 amount,
         address receiverAddress,
         bytes32 transactionId
     ) internal {
-        bytes memory payload = abi.encode(userAddress, tokenAddress, amount, receiverAddress, transactionId);
+        bytes memory payload = abi.encode(
+            userAddress,
+            tokenAddress,
+            amount,
+            receiverAddress,
+            transactionId
+        );
         uint256 fees = ISocket(socket).getMinFees(
-            gasLimit_, 
-            payload.length, 
-            bytes32(0), 
-            bytes32(0), 
-            destinationChainSlug, 
+            gasLimit_,
+            payload.length,
+            bytes32(0),
+            bytes32(0),
+            destinationChainSlug,
             address(this)
         );
-        
+
         console.log("Settlement Fees calculated: ", destinationChainSlug, fees);
 
         ISocket(socket).outbound{value: fees}(
@@ -105,11 +133,14 @@ contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
         );
     }
 
-    function connectToPlug(uint32 _remoteChainSlug, address _remotePlug) external onlyOwner {
+    function connectToPlug(
+        uint32 _remoteChainSlug,
+        address _remotePlug
+    ) external onlyOwner {
         ISocket(socket).connect(
-            _remoteChainSlug, 
-            _remotePlug, 
-            inboundSwitchBoard, 
+            _remoteChainSlug,
+            _remotePlug,
+            inboundSwitchBoard,
             outboundSwitchBoard
         );
         siblingPlugs[_remoteChainSlug] = _remotePlug;
@@ -122,17 +153,14 @@ contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
         require(msg.sender == socket, "Caller is not Socket");
 
         console.log("Module inbound");
-        
+
         (
             address userAddress,
             address tokenAddress,
             uint256 amount,
             address receiverAddress,
             bytes32 transactionId
-        ) = abi.decode(
-            _payload,
-            (address, address, uint256, address, bytes32)
-        );
+        ) = abi.decode(_payload, (address, address, uint256, address, bytes32));
 
         console.log("User Address: ", userAddress);
         console.log("Token Address: ", tokenAddress);
@@ -142,7 +170,13 @@ contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
         console.log("Calling inbound on vault");
 
         // Vault
-        vault.inbound(userAddress, tokenAddress, amount, receiverAddress, transactionId);
+        vault.inbound(
+            userAddress,
+            tokenAddress,
+            amount,
+            receiverAddress,
+            transactionId
+        );
 
         emit SettlementMessageReceived(transactionId);
     }
