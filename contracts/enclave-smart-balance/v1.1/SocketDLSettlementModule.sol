@@ -12,13 +12,13 @@ import "../interfaces/ISettlementModule.sol";
 import "hardhat/console.sol";
 
 contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
-    address public socket;
-    address public inboundSwitchBoard;   
-    address public outboundSwitchBoard;
+    address public immutable socket;
+    address public immutable inboundSwitchBoard;   
+    address public immutable outboundSwitchBoard;
+    EnclaveVirtualLiquidityVault public immutable vault;
+    
     uint256 public settlementMessageGasLimit;
     uint256 public settlementMaxBatchSize;
-
-    EnclaveVirtualLiquidityVault public vault;
     
     mapping(uint32 => address) public siblingPlugs;
 
@@ -145,6 +145,14 @@ contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
         vault.inbound(userAddress, tokenAddress, amount, receiverAddress, transactionId);
 
         emit SettlementMessageReceived(transactionId);
+    }
+
+    function setSettlementMessageGasLimit(uint256 _newGasLimit) external onlyOwner {
+        settlementMessageGasLimit = _newGasLimit;
+    }
+
+    function setSettlementMaxBatchSize(uint256 _newMaxBatchSize) external onlyOwner {
+        settlementMaxBatchSize = _newMaxBatchSize;
     }
 
     receive() external payable {}
