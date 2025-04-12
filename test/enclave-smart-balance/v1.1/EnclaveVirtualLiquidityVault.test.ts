@@ -595,7 +595,6 @@ describe("EnclaveVirtualLiquidityVault", function () {
             mockToken.target,
             smallerAmount,
             smallerAmount,
-            vault.target,
             reclaimPlan,
             expectedTxId
           );
@@ -811,7 +810,6 @@ describe("EnclaveVirtualLiquidityVault", function () {
             await vault.NATIVE_ADDRESS(),
             nativeAmount,
             nativeAmount,
-            vault.target,
             reclaimPlan,
             expectedTxId
           );

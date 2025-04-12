@@ -53,7 +53,7 @@ contract EnclaveVirtualLiquidityVault is
 
     event Deposited(address indexed user, address indexed tokenAddress, uint256 amount);
     event Withdrawn(address indexed user, address indexed tokenAddress, uint256 amount, address indexed vaultManager);
-    event SolverSponsored(address indexed user, address indexed tokenAddress, uint256 creditAmount, uint256 futureDebitAmount, address indexed paymaster, bytes reclaimPlan, bytes32 transactionId);
+    event SolverSponsored(address indexed user, address indexed tokenAddress, uint256 creditAmount, uint256 futureDebitAmount, bytes reclaimPlan, bytes32 transactionId);
     event Claimed(address indexed solver, address indexed tokenAddress, uint256 amount, address indexed owner, bytes32 transactionId);
     event TokenWithdrawn(address indexed tokenAddress, address indexed vaultManager, uint256 amount);
 
@@ -407,7 +407,7 @@ contract EnclaveVirtualLiquidityVault is
 
         claimNonce[msg.sender]++;
 
-        emit SolverSponsored(msg.sender, _tokenAddress, _creditAmount, _debitAmount, address(this), reclaimPlan, transactionId);
+        emit SolverSponsored(msg.sender, _tokenAddress, _creditAmount, _debitAmount, reclaimPlan, transactionId);
     }
 
     function inbound(

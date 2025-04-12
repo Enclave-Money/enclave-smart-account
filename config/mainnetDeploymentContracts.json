@@ -1,0 +1,127 @@
+{
+    "42161": {
+      "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+      "paymaster": "0xE6467Bf0f5cB46faA45E54B3DfE83abC2A2615e1",
+      "p256Verifier": "0xe4fc1002E56cf8deDCE7b69ba94c88a47feb6500",
+      "p256SmartAccountFactory": "0x502674c8eF6A87A9C485df592033796A5ad71607",
+      "enclaveRegistry": "0xA8E8f8cBD889Fc74882AeDFDcf8323fD7423DB47",
+      "tokens": {
+        "usdc": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+        "usdt": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
+      },
+      "paymasters": {
+        "usdc": "0x20923d017aD535BA9d8cfB2E9b343E9ed2E35c0a",
+        "usdt": "0x4F8959BC183cD80D80665Ba1e26DfbdbEE87F9d1",
+        "solver": "0xcC6ac1dc190500D12b34509cE24498A96CfFf4B9"
+      },
+      "validators": {
+        "P256": "0x5c9373E35Bd54E4eEeC5284AEA97f3419AdD3a6b",
+        "sessionAdapter": "0xAB4D0d9E924c8b1A7118743C765ee1820a4dce60",
+        "simpleSession": "0xE583Dc8f5459Ebb61f289779e56B053C571B33ce",
+        "smartBalanceConvert": "0x9e529DDC00E7d150aF53E8dE14503bCB39fd42f5",
+        "smartAccountECDSA": "0xE9c7cE37eDcfAEb26023978d915361d5169b4Cd4"
+      },
+      "factories": {
+        "P256SmartAccountV1": "0x768d2072e5569084453131d43f2891d152017A2D",
+        "smartAccount": "0x015AB0B3dbf4EF6664A1D9eCcdfA42D1d75f4978"
+      },
+      "vaults": {
+        "smartBalance": "0x11DCe5ef6E4ADD33c694611da2E205B87Edd23FE"
+      },
+      "settlementModule": "",
+      "socket": {
+        "socket": "0x37cc674582049b579571E2fFd890a4d99355f6Ba",
+        "switchboards": {
+          "FAST": "0xd5e829827F665c42326EAF68Da3360bd59b42f2f"
+        }
+      }
+    },
+    "10": {
+      "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+      "paymaster": "0xd3C02681577e7f87f091736eF1817328ed980B42",
+      "p256Verifier": "0x0056DEDa33aC4Fab7ADAD39A20c10196CeB5cd27",
+      "p256SmartAccountFactory": "0x502674c8eF6A87A9C485df592033796A5ad71607",
+      "enclaveRegistry": "0xA8E8f8cBD889Fc74882AeDFDcf8323fD7423DB47",
+      "tokens": {
+        "usdc": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
+        "usdt": "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58"
+      },
+      "paymasters": {
+        "usdc": "0xD9bB5b5562537B1946FCed5e8da39A16fC522688",
+        "usdt": "0xd34CECDA3f1dD6d4A422af87982099091A5C6792",
+        "solver": "0xcC6ac1dc190500D12b34509cE24498A96CfFf4B9"
+      },
+      "validators": {
+        "P256": "0x5D470c5D14F1B771e1Fc4f67B398c0a59D425BAC",
+        "sessionAdapter": "0x20D0D4aB4bFaBcA8cbb5450Da18DD231573227B6",
+        "simpleSession": "0x5110905eC162E48F4B5C269C6fb0fE1c3AD86aAE",
+        "smartBalanceConvert": "0xc1D5A3f3a884588Abe830166281B76a15B7c8CB2",
+        "smartAccountECDSA": "0xC5e14E0ceE95454488B9EcC885225C542e1C632C"
+      },
+      "factories": {
+        "P256SmartAccountV1": "0x768d2072e5569084453131d43f2891d152017A2D",
+        "smartAccount": "0x015AB0B3dbf4EF6664A1D9eCcdfA42D1d75f4978"
+      },
+      "vaults": {
+        "smartBalance": "0x11DCe5ef6E4ADD33c694611da2E205B87Edd23FE"
+      },
+      "settlementModule": "",
+      "socket": {
+        "socket": "0x301bD265F0b3C16A58CbDb886Ad87842E3A1c0a4",
+        "switchboards": {
+          "FAST": "0x09A6e77912a6bcFc3abfDfb841A85380Bb2A8B97"
+        }
+      }
+    },
+    "8453": {
+      "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+      "paymaster": "0x959DF35a4bDc25BA125615dfC84621D038A95FA8",
+      "p256Verifier": "0xb885bf3Fe55c3070581203f0c600E03368597501",
+      "p256SmartAccountFactory": "0x502674c8eF6A87A9C485df592033796A5ad71607",
+      "enclaveRegistry": "0xA8E8f8cBD889Fc74882AeDFDcf8323fD7423DB47",
+      "tokens": {
+        "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+      },
+      "paymasters": {
+        "usdc": "0x232fCFD3DB08926B387dCF31d00AD23da705402a",
+        "solver": "0xcC6ac1dc190500D12b34509cE24498A96CfFf4B9"
+      },
+      "validators": {
+        "P256": "0x52B74358ef7c0C95E106FfCb2aDd6dFb8DF58aFb",
+        "sessionAdapter": "0x380D4BD3F9f10eA5D24eaA0b87b7BF04c7732391",
+        "simpleSession": "0x8dfD91356c41BbEe12f6D8e658874D0EDe2C63ea",
+        "smartBalanceConvert": "0x145f75d62EE0762d166295D2d4bffdF4fF41c0F8",
+        "smartAccountECDSA": "0x02E991c16cC6941C64ea5462454729a338022694"
+      },
+      "factories": {
+        "P256SmartAccountV1": "0x768d2072e5569084453131d43f2891d152017A2D",
+        "smartAccount": "0x015AB0B3dbf4EF6664A1D9eCcdfA42D1d75f4978"
+      },
+      "vaults": {
+        "smartBalance": "0x11DCe5ef6E4ADD33c694611da2E205B87Edd23FE"
+      },
+      "settlementModule": "",
+      "socket": {
+        "socket": "0x12E6e58864cE4402cF2B4B8a8E9c75eAD7280156",
+        "switchboards": {
+          "FAST": "0x957301825Dc21d4A92919C9E72dC9E6C6a29e7f8"
+        }
+      }
+    },
+    "43114": {
+      "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+      "paymaster": "0x959DF35a4bDc25BA125615dfC84621D038A95FA8",
+      "p256Verifier": "0xb885bf3Fe55c3070581203f0c600E03368597501",
+      "p256SmartAccountFactory": "0x502674c8eF6A87A9C485df592033796A5ad71607",
+      "enclaveRegistry": "0xA8E8f8cBD889Fc74882AeDFDcf8323fD7423DB47",
+      "tokens": {
+        "usdc": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+        "usdt": "0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7"
+      },
+      "paymasters": {
+        "usdc": "0x224e0779e0Ef924f0c0954fe2C886CF58E1a293e",
+        "usdt": "0x393D1A9815ae893D09c8059D9C19705706CbBc93"
+      }
+    }
+  }
+  
