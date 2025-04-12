@@ -1124,6 +1124,58 @@ describe("EnclaveVirtualLiquidityVault", function () {
     });
   });
 
+  describe("EntryPoint Management", function () {
+    it("should allow owner to set new entry point", async function () {
+      // Deploy a new entry point
+      const NewEntryPoint = await ethers.getContractFactory("EntryPoint");
+      const newEntryPoint = await NewEntryPoint.deploy();
+      await newEntryPoint.waitForDeployment();
+
+      // Add some deposit to the current entry point
+      await vault.connect(owner).deposit({ value: ethers.parseEther("1.0") });
+
+      // Set new entry point
+      await expect(vault.connect(owner).setEntryPoint(newEntryPoint.target))
+        .to.emit(vault, "EntryPointChanged")
+        .withArgs(mockEntryPoint.target, newEntryPoint.target);
+
+      // Verify new entry point is set
+      expect(await vault.entryPoint()).to.equal(newEntryPoint.target);
+    });
+
+    it("should revert when non-owner tries to set entry point", async function () {
+      const NewEntryPoint = await ethers.getContractFactory("EntryPoint");
+      const newEntryPoint = await NewEntryPoint.deploy();
+      await newEntryPoint.waitForDeployment();
+
+      await expect(vault.connect(user1).setEntryPoint(newEntryPoint.target))
+        .to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should revert when setting same entry point", async function () {
+      await vault.connect(owner).deposit({ value: ethers.parseEther("1.0") });
+
+      await expect(vault.connect(owner).setEntryPoint(mockEntryPoint.target))
+        .to.be.revertedWith("Same entrypoint");
+    });
+
+    it("should revert when setting zero address as entry point", async function () {
+      await vault.connect(owner).deposit({ value: ethers.parseEther("1.0") });
+
+      await expect(vault.connect(owner).setEntryPoint(ethers.ZeroAddress))
+        .to.be.revertedWith("Invalid entrypoint address");
+    });
+
+    it("should revert when there's no deposit", async function () {
+      const NewEntryPoint = await ethers.getContractFactory("EntryPoint");
+      const newEntryPoint = await NewEntryPoint.deploy();
+      await newEntryPoint.waitForDeployment();
+
+      await expect(vault.connect(owner).setEntryPoint(newEntryPoint.target))
+        .to.be.revertedWith("Deposit is not zero");
+    });
+  });
+
   describe("getVaultLiquidity", function () {
     beforeEach(async function () {
       // Ensure the vault has some native token balance

@@ -109,4 +109,28 @@ abstract contract CustomBasePaymaster is IPaymaster, Ownable {
     function _requireFromEntryPoint() internal virtual {
         require(msg.sender == address(entryPoint), "Sender not EntryPoint");
     }
+
+    /**
+     * @notice Sets a new entrypoint contract and transfers all funds to it
+     * @param newEntryPoint The new entrypoint contract address
+     */
+    function setEntryPoint(IEntryPoint newEntryPoint) external onlyOwner {
+        require(address(newEntryPoint) != address(0), "Invalid entrypoint address");
+        require(address(newEntryPoint) != address(entryPoint), "Same entrypoint");
+
+        uint256 epDeposit = getDeposit();
+        require(epDeposit > 0, "Deposit is not zero") ;
+        
+        IEntryPoint oldEntryPoint = entryPoint;
+        entryPoint = newEntryPoint;
+
+        emit EntryPointChanged(address(oldEntryPoint), address(newEntryPoint));
+    }
+
+    /**
+     * @notice Emitted when the entrypoint is changed
+     * @param oldEntryPoint The address of the old entrypoint
+     * @param newEntryPoint The address of the new entrypoint
+     */
+    event EntryPointChanged(address indexed oldEntryPoint, address indexed newEntryPoint);
 }
