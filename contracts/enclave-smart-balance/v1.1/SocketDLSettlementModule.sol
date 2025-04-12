@@ -22,6 +22,8 @@ contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
     
     mapping(uint32 => address) public siblingPlugs;
 
+    event ETHWithdrawn(address indexed recipient, uint256 amount);
+
     constructor(
         address _vault,
         address _socket,
@@ -153,6 +155,17 @@ contract SocketDLSettlementModule is Ownable, ISettlementModule, IPlug {
 
     function setSettlementMaxBatchSize(uint256 _newMaxBatchSize) external onlyOwner {
         settlementMaxBatchSize = _newMaxBatchSize;
+    }
+
+    function withdrawETH(address recipient, uint256 amount) external onlyOwner {
+        require(recipient != address(0), "Invalid recipient address");
+        require(amount > 0, "Amount must be greater than 0");
+        require(address(this).balance >= amount, "Insufficient balance");
+
+        (bool success, ) = recipient.call{value: amount}("");
+        require(success, "ETH transfer failed");
+
+        emit ETHWithdrawn(recipient, amount);
     }
 
     receive() external payable {}

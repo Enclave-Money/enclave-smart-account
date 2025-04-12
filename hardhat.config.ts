@@ -39,6 +39,15 @@ function getNetworkProd(url: string) {
   };
 }
 
+function getNetworkMaster(url: string) {
+  return {
+    url,
+    // accounts: [process.env.REGISTRY_DEPLOYMENT_KEY as string] // Change after registry and factory deployment
+    accounts: [process.env.PRIVATE_KEY_MASTER as string] // SmartAccountFactoryV1 deployment
+  };
+}
+
+
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [
@@ -145,6 +154,12 @@ const config: HardhatUserConfig = {
     // polymain2: getNetwork1("https://polygon-mainnet.infura.io/v3/16fb3743839e4f80841b0401a68a020f"),
     basemain2: getNetworkProd("https://1rpc.io/base"),
     avaxmain2: getNetworkProd("https://avalanche-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+
+
+
+    opMaster: getNetworkMaster("https://optimism-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    arbMaster: getNetworkMaster("https://arbitrum-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    baseMaster: getNetworkMaster("https://1rpc.io/base"),
   
     // bnbmain: getNetworkProd("https://bsc-mainnet.infura.io/v3/16fb3743839e4f80841b0401a68a020f"),  
     // scrollmain: {},
