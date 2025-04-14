@@ -5,42 +5,32 @@ import { IValidator, MODULE_TYPE_VALIDATOR } from "./IERC7579Module.sol";
 import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {UserOperationLib} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import {_packValidationData} from "@account-abstraction/contracts/core/Helpers.sol";
-import "../P256SmartAccountV1.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 bytes4 constant ERC1271_MAGICVALUE = 0x1626ba7e;
 bytes4 constant ERC1271_INVALID = 0xffffffff;
 
-/**
- * @title ECDSA Multichain Validator module for Biconomy Smart Accounts.
- * @dev Biconomy’s Multichain Validator module enables use cases which
- * require several actions to be authorized for several chains with just one
- * signature required from user.
- *         - Leverages Merkle Trees to efficiently manage large datasets
- *         - Inherits from the ECDSA Ownership Registry Module
- *         - Compatible with Biconomy Modular Interface v 0.1
- *         - Does not introduce any additional security trade-offs compared to the
- *           vanilla ERC-4337 flow.
- * @author Fil Makarov - <filipp.makarov@biconomy.io>
- */
-
-contract MultichainECDSAValidator is IValidator {
+contract P256_MultichainECDSAValidator is IValidator {
     using UserOperationLib for UserOperation;
 
-    mapping(address => bool) internal isDisabled;
+    mapping(address => bool) internal isEnabled;
+    mapping(address => address) public eoaAddress;
 
-    function onInstall(bytes calldata) external override {
+    function onInstall(bytes calldata data) external override {
         if (isInitialized(msg.sender)) revert AlreadyInitialized(msg.sender);
-        isDisabled[msg.sender] = false;
+        isEnabled[msg.sender] = true;
+        (address owner) = abi.decode(data, (address));
+        eoaAddress[msg.sender] = owner;
     }
 
     function onUninstall(bytes calldata) external override {
         if (!isInitialized(msg.sender)) revert NotInitialized(msg.sender);
-        isDisabled[msg.sender] = true;
+        isEnabled[msg.sender] = false;
+        eoaAddress[msg.sender] = address(0);
     }
 
     function isInitialized(address smartAccount) public view override returns (bool) {
-        return !isDisabled[smartAccount];
+        return isEnabled[smartAccount];
     }
 
     function isModuleType(uint256 moduleTypeId) external pure override returns (bool) {
@@ -60,8 +50,8 @@ contract MultichainECDSAValidator is IValidator {
         UserOperation calldata userOp,
         bytes32 userOpHash
     ) external view virtual override returns (uint256) {
-        require(!isDisabled[userOp.sender], "Module is disabled");
-        address owner = P256SmartAccountV1(payable(userOp.sender)).eoaOwner();
+        require(isEnabled[userOp.sender], "Module is disabled");
+        address owner = eoaAddress[userOp.sender];
         bytes32 hash;
 
         if (userOp.signature.length == 65) {
@@ -102,14 +92,14 @@ contract MultichainECDSAValidator is IValidator {
     }
 
 
-    function isValidSignatureWithSender(address, bytes32 hash, bytes calldata sig)
+    function isValidSignatureWithSender(address sender, bytes32 hash, bytes calldata sig)
         external
         view
         override
         returns (bytes4)
     {
-        require(!isDisabled[msg.sender], "Module is disabled");
-        address owner = P256SmartAccountV1(payable(msg.sender)).eoaOwner();
+        require(isEnabled[sender], "Module is disabled");
+        address owner = eoaAddress[sender];
         bytes32 hash_;
 
         if (sig.length == 65) {

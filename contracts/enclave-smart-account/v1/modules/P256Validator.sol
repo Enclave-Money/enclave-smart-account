@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "../../EnclaveRegistry.sol";
 import "../../P256V.sol";
-import "../../P256SmartAccount.sol";
+import "../P256SmartAccountV1.sol";
 
 import "hardhat/console.sol";
 
@@ -70,7 +70,7 @@ contract P256Validator is IValidator {
         console.log("clientDataJSONPre", clientDataJSONPre);
         console.log("clientDataJSONPost", clientDataJSONPost);
 
-        if (!_verifySignature(authenticatorData, clientDataJSONPre, clientDataJSONPost, userOpHash, r, s)) {
+        if (!_verifySignature(userOp.sender, authenticatorData, clientDataJSONPre, clientDataJSONPost, userOpHash, r, s)) {
             console.log("Validation Failed");
             return 1;
         }
@@ -79,13 +79,13 @@ contract P256Validator is IValidator {
         return 0;
     }
 
-    function isValidSignatureWithSender(address, bytes32 hash, bytes calldata data)
+    function isValidSignatureWithSender(address sender, bytes32 hash, bytes calldata data)
         external
         view
         override
         returns (bytes4)
     {
-        require(!isDisabled[msg.sender], "Module is disabled");
+        require(!isDisabled[sender], "Module is disabled");
         (
             bytes32 keyHash,
             uint256 r,
@@ -98,7 +98,7 @@ contract P256Validator is IValidator {
             (bytes32, uint256, uint256, bytes, string, string)
         );
         (keyHash);
-        if (!_verifySignature(authenticatorData, clientDataJSONPre, clientDataJSONPost, hash, r, s)) {
+        if (!_verifySignature(sender, authenticatorData, clientDataJSONPre, clientDataJSONPost, hash, r, s)) {
             console.log("Validation Failed");
             return ERC1271_INVALID;
         }
@@ -108,6 +108,7 @@ contract P256Validator is IValidator {
     }
 
     function _verifySignature(
+        address sender,
         bytes memory authenticatorData,
         string memory clientDataJSONPre,
         string memory clientDataJSONPost,
@@ -128,7 +129,7 @@ contract P256Validator is IValidator {
         bytes32 clientHash = sha256(bytes(clientDataJSON));
         bytes32 sigHash = sha256(bytes.concat(authenticatorData, clientHash));
 
-        return P256V(EnclaveRegistry(enclaveRegistry).getRegistryAddress("p256Verifier"))
-            .verify(sigHash, r, s, [P256SmartAccount(payable(msg.sender)).pubKey(0), P256SmartAccount(payable(msg.sender)).pubKey(1)]);
+        return P256V(EnclaveRegistry(enclaveRegistry).getRegistryAddress("P256V"))
+            .verify(sigHash, r, s, [P256SmartAccountV1(payable(sender)).pubKey(0), P256SmartAccountV1(payable(sender)).pubKey(1)]);
     }
 }

@@ -16,9 +16,15 @@ bytes4 constant ERC1271_INVALID = 0xffffffff;
 contract MockValidatorP256 is IValidator {
     EnclaveRegistry enclaveRegistry;
     mapping(address => bool) internal isDisabled;
+    uint256 public validationResult;
 
     constructor (address _enclaveRegistry) {
         enclaveRegistry = EnclaveRegistry(_enclaveRegistry);
+        validationResult = 0;
+    }
+
+    function setValidationResult(uint256 _result) external {
+        validationResult = _result;
     }
 
     function onInstall(bytes calldata) external override {
@@ -49,7 +55,7 @@ contract MockValidatorP256 is IValidator {
         returns (uint256)
     {
         console.log("MockP256 UserOp Validation Mode: ", userOp.nonce);
-        return 0;
+        return validationResult;
     }
 
     function isValidSignatureWithSender(address, bytes32, bytes calldata)

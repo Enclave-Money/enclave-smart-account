@@ -16,7 +16,7 @@ import "@account-abstraction/contracts/samples/callback/TokenCallbackHandler.sol
 import "../../enclave-smart-account/EnclaveRegistry.sol";
 import "../../enclave-smart-balance/interfaces/IEnclaveTokenVault.sol";
 
-import "./modules/EnclaveModuleManager.sol";
+import "../../enclave-smart-account/v1/EnclaveModuleManager.sol";
 
 import "hardhat/console.sol";
 /**

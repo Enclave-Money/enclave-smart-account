@@ -316,7 +316,7 @@ contract P256SmartAccount is
         address newImplementation
     ) internal view override {
         (newImplementation);
-        _onlyOwner();
+        _requireFromOwnerOrGuardian();
     }
 
     /**

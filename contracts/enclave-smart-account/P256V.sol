@@ -4,6 +4,8 @@ pragma solidity ^0.8.19;
 import "hardhat/console.sol";
 
 contract P256V {
+
+    // Pre-compile address or P256Verifier address (for networks that don't support 7212)
     address public precompile;
 
     constructor (address _precompile) {

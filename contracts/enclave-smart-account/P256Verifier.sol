@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Force a specific Solidity version for reproducibility.
-pragma solidity 0.8.19;
+pragma solidity ^0.8.19;
 
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";

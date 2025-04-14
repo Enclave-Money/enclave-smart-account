@@ -3,34 +3,33 @@ pragma solidity ^0.8.19;
 
 import { IValidator, MODULE_TYPE_VALIDATOR } from "./IERC7579Module.sol";
 import { UserOperation } from "@account-abstraction/contracts/interfaces/UserOperation.sol";
-import { Base64URL } from "../../utils/Base64URL.sol";
-import "@account-abstraction/contracts/core/Helpers.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "../../P256V.sol";
-import "../P256SmartAccountV1.sol";
 
 import "hardhat/console.sol";
 
 bytes4 constant ERC1271_MAGICVALUE = 0x1626ba7e;
 bytes4 constant ERC1271_INVALID = 0xffffffff;
 
-contract ECDSAValidator is IValidator {
-    mapping(address => bool) internal isDisabled;
+contract P256_ECDSAValidator is IValidator {
+    mapping(address => bool) internal isEnabled;
+    mapping(address => address) public eoaAddress;
 
-    function onInstall(bytes calldata) external override {
+    function onInstall(bytes calldata data) external override {
         if (isInitialized(msg.sender)) revert AlreadyInitialized(msg.sender);
-        isDisabled[msg.sender] = false;
+        isEnabled[msg.sender] = true;
+        (address owner) = abi.decode(data, (address));
+        eoaAddress[msg.sender] = owner;
     }
 
     function onUninstall(bytes calldata) external override {
         if (!isInitialized(msg.sender)) revert NotInitialized(msg.sender);
-        isDisabled[msg.sender] = true;
+        isEnabled[msg.sender] = false;
+        eoaAddress[msg.sender] = address(0);
     }
 
     function isInitialized(address smartAccount) public view override returns (bool) {
-        return !isDisabled[smartAccount];
+        return isEnabled[smartAccount];
     }
 
     function isModuleType(uint256 moduleTypeId) external pure override returns (bool) {
@@ -46,8 +45,8 @@ contract ECDSAValidator is IValidator {
         view
         returns (uint256)
     {
-        require(!isDisabled[userOp.sender], "Module is disabled");
-        address owner = P256SmartAccountV1(payable(userOp.sender)).eoaOwner();
+        require(isEnabled[userOp.sender], "Module is disabled");
+        address owner = eoaAddress[userOp.sender];
         bytes32 hash = ECDSA.toEthSignedMessageHash(userOpHash);
         if (owner != ECDSA.recover(hash, userOp.signature)) {
             return 1;
@@ -55,14 +54,14 @@ contract ECDSAValidator is IValidator {
         return 0;
     }
 
-    function isValidSignatureWithSender(address, bytes32 hash, bytes calldata sig)
+    function isValidSignatureWithSender(address sender, bytes32 hash, bytes calldata sig)
         external
         view
         override
         returns (bytes4)
     {
-        require(!isDisabled[msg.sender], "Module is disabled");
-        address owner = P256SmartAccountV1(payable(msg.sender)).eoaOwner();
+        require(!isEnabled[sender], "Module is disabled");
+        address owner = eoaAddress[sender];
         if (owner == ECDSA.recover(hash, sig)) {
             return ERC1271_MAGICVALUE;
         }

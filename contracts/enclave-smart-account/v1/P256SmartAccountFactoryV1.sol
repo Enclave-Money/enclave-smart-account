@@ -25,11 +25,11 @@ contract P256SmartAccountFactoryV1 {
      * Note that during UserOperation execution, this method is called only if the account is not deployed.
      * This method returns an existing account address so that entryPoint.getSenderAddress() would work even after account creation
      */
-    function createAccount(uint256[2] memory _pubkey, address enclaveRegistry, uint256 salt)
+    function createAccount(uint256[2] memory _pubkey, address enclaveRegistry, bool smartBalanceEnabled, uint256 salt)
         public
         returns (P256SmartAccountV1 ret)
     {
-        address addr = getAccountAddress( _pubkey, enclaveRegistry, salt);
+        address addr = getAccountAddress( _pubkey, enclaveRegistry, smartBalanceEnabled, salt);
         uint256 codeSize = addr.code.length;
         if (codeSize > 0) {
             return P256SmartAccountV1(payable(addr));
@@ -38,7 +38,7 @@ contract P256SmartAccountFactoryV1 {
             payable(
                 new ERC1967Proxy{salt: bytes32(salt)}(
                     address(accountImplementation),
-                    abi.encodeCall(P256SmartAccount.initialize, ( _pubkey,enclaveRegistry))
+                    abi.encodeCall(P256SmartAccountV1.initialize, ( _pubkey,enclaveRegistry, smartBalanceEnabled))
                 )
             )
         );
@@ -47,7 +47,7 @@ contract P256SmartAccountFactoryV1 {
     /**
      * calculate the counterfactual address of this account as it would be returned by createAccount()
      */
-    function getAccountAddress( uint256[2] memory _pubkey,  address enclaveRegistry, uint256 salt) public view returns (address) {
+    function getAccountAddress( uint256[2] memory _pubkey,  address enclaveRegistry, bool smartBalanceEnabled, uint256 salt) public view returns (address) {
         return Create2.computeAddress(
             bytes32(salt),
             keccak256(
@@ -55,7 +55,7 @@ contract P256SmartAccountFactoryV1 {
                     type(ERC1967Proxy).creationCode,
                     abi.encode(
                         address(accountImplementation),
-                        abi.encodeCall(P256SmartAccount.initialize, ( _pubkey, enclaveRegistry))
+                        abi.encodeCall(P256SmartAccountV1.initialize, ( _pubkey, enclaveRegistry, smartBalanceEnabled))
                     )
                 )
             )

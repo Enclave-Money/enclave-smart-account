@@ -9,7 +9,7 @@ import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOpera
 import "../../utils/Base64URL.sol";
 import "../../P256V.sol";
 import "../../EnclaveRegistry.sol";
-import "../../P256SmartAccount.sol";
+import "../P256SmartAccountV1.sol";
 
 bytes4 constant ERC1271_MAGICVALUE = 0x1626ba7e;
 bytes4 constant ERC1271_INVALID = 0xffffffff;
@@ -175,6 +175,6 @@ contract MultichainP256Validator is IValidator {
         bytes32 sigHash = sha256(bytes.concat(authenticatorData, clientHash));
 
         return P256V(EnclaveRegistry(enclaveRegistry).getRegistryAddress("p256Verifier"))
-        .verify(sigHash, r, s, [P256SmartAccount(payable(msg.sender)).pubKey(0), P256SmartAccount(payable(msg.sender)).pubKey(1)]);
+        .verify(sigHash, r, s, [P256SmartAccountV1(payable(msg.sender)).pubKey(0), P256SmartAccountV1(payable(msg.sender)).pubKey(1)]);
     }
 }

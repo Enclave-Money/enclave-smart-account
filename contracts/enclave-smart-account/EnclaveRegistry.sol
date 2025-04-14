@@ -2,20 +2,32 @@
 pragma solidity ^0.8.19;
 
 contract EnclaveRegistry {
-
-    address public owner;
     mapping(string => address) private registry;
+    mapping(address => bool) public isManager;
 
     constructor (address _owner) {
-        owner = _owner;
+        isManager[_owner] = true; // Owner is also a manager by default
     }
 
-    function _onlyOwner () internal view {
-        require(msg.sender == owner, "Caller not owner");
+    function _onlyManager() internal view {
+        require(isManager[msg.sender], "Caller not manager");
+    }
+
+    function addManager(address _manager) external {
+        _onlyManager();
+        require(_manager != address(0), "Registry: Zero address");
+        require(!isManager[_manager], "Registry: Already a manager");
+        isManager[_manager] = true;
+    }
+
+    function removeManager(address _manager) external {
+        _onlyManager();
+        require(isManager[_manager], "Registry: Not a manager");
+        isManager[_manager] = false;
     }
 
     function updateRegistryAddress(string memory _contractName, address _contractAddress) external {
-        _onlyOwner();
+        _onlyManager();
         require(_contractAddress != address(0), "Registry: Zero address");
         registry[_contractName] = _contractAddress;
     }
