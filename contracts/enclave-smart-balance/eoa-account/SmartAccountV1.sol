@@ -32,7 +32,7 @@ library SmartAccountV1Storage {
     }
 
     // keccak256(abi.encode(uint256(keccak256("enclave.storage.SmartAccountV1")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant STORAGE_SLOT = 0xfa8f7a8c0e97b8a50de13d226fcd88820c23b471644aa13f5177d073d8e4bed00;
+    bytes32 private constant STORAGE_SLOT = keccak256(abi.encode(uint256(keccak256("enclave.storage.SmartAccountV1")) - 1)) & ~bytes32(uint256(0xff));
 
     function smartAccountV1Layout() internal pure returns (SmartAccountV1Layout storage l) {
         bytes32 slot = STORAGE_SLOT;

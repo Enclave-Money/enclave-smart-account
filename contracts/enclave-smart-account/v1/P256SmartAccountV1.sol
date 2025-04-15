@@ -75,8 +75,8 @@ contract P256SmartAccountV1 is
         return P256SmartAccountV1Storage.p256SmartAccountLayoutV1().enclaveRegistry;
     }
 
-    function pubKey() public view returns (uint256[2] memory) {
-        return P256SmartAccountV1Storage.p256SmartAccountLayoutV1().pubKey;
+    function pubKey(uint _index) public view returns (uint256) {
+        return P256SmartAccountV1Storage.p256SmartAccountLayoutV1().pubKey[_index];
     }
 
     /// @inheritdoc BaseAccount
