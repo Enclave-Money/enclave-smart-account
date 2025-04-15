@@ -34,8 +34,7 @@ library P256SmartAccountV1Storage {
         uint256[2] pubKey;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("enclave.storage.P256SmartAccountV1")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant STORAGE_SLOT = 0xdd9fbf01baa6f1fd1671ac3b3f90edd9bc0b0100c21f97a6a2ba04e120fc6a00;
+    bytes32 private constant STORAGE_SLOT = keccak256(abi.encode(keccak256("enclave.storage.P256SmartAccountV1"))) & bytes32(type(uint256).max - 0xFF);
 
     function p256SmartAccountLayoutV1() internal pure returns (P256SmartAccountV1Layout storage l) {
         bytes32 slot = STORAGE_SLOT;
