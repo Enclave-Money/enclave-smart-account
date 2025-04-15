@@ -19,6 +19,29 @@ import "../../enclave-smart-balance/interfaces/IEnclaveTokenVault.sol";
 import "./modules/EnclaveModuleManager.sol";
 
 import "hardhat/console.sol";
+
+/**
+ * @dev ERC-7201 storage layout namespace
+ * @custom:storage-location erc7201:enclave.storage.SmartAccountV1
+ */
+library SmartAccountV1Storage {
+    struct Layout {
+        address owner;
+        address enclaveRegistry;
+        bool smartBalanceEnabled;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("enclave.storage.SmartAccountV1")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant STORAGE_SLOT = 0xfa8f7a8c0e97b8a50de13d226fcd88820c23b471644aa13f5177d073d8e4bed00;
+
+    function layout() internal pure returns (Layout storage l) {
+        bytes32 slot = STORAGE_SLOT;
+        assembly {
+            l.slot := slot
+        }
+    }
+}
+
 /**
  * minimal account.
  *  this is sample minimal account.
@@ -27,10 +50,6 @@ import "hardhat/console.sol";
  */
 contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, Initializable {
     using ECDSA for bytes32;
-
-    address public owner;
-    address public enclaveRegistry;
-    bool public smartBalanceEnabled;
 
     event SmartAccountInitialized(address indexed owner);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -41,10 +60,22 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
         _;
     }
 
+    // Helper functions to access the namespaced storage
+    function owner() public view returns (address) {
+        return SmartAccountV1Storage.layout().owner;
+    }
+
+    function enclaveRegistry() public view returns (address) {
+        return SmartAccountV1Storage.layout().enclaveRegistry;
+    }
+
+    function smartBalanceEnabled() public view returns (bool) {
+        return SmartAccountV1Storage.layout().smartBalanceEnabled;
+    }
+
     /// @inheritdoc BaseAccount
     function entryPoint() public view virtual override returns (IEntryPoint) {
-        address _entryPoint = EnclaveRegistry(enclaveRegistry)
-            .getRegistryAddress("entryPoint");
+        address _entryPoint = EnclaveRegistry(enclaveRegistry()).getRegistryAddress("entryPoint");
         return IEntryPoint(_entryPoint);
     }
 
@@ -57,7 +88,7 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
 
     function _onlyOwner() internal view {
         //directly from EOA owner, or through the account itself (which gets redirected through execute())
-        require(msg.sender == owner || msg.sender == address(this), "only owner");
+        require(msg.sender == owner() || msg.sender == address(this), "only owner");
     }
 
     /**
@@ -103,21 +134,22 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
     }
 
     function _initialize(address anOwner, address _enclaveRegistry) internal virtual {
-        owner = anOwner;
-        enclaveRegistry = _enclaveRegistry;
-        smartBalanceEnabled = true;
-        emit SmartAccountInitialized(owner);
+        SmartAccountV1Storage.Layout storage l = SmartAccountV1Storage.layout();
+        l.owner = anOwner;
+        l.enclaveRegistry = _enclaveRegistry;
+        l.smartBalanceEnabled = true;
+        emit SmartAccountInitialized(anOwner);
     }
 
     // Require the function call went through EntryPoint or owner
     function _requireFromEntryPointOrOwner() internal view {
-        require(msg.sender == address(entryPoint()) || msg.sender == owner, "account: not Owner or EntryPoint");
+        require(msg.sender == address(entryPoint()) || msg.sender == owner(), "account: not Owner or EntryPoint");
     }
 
     // Require the function call went through Owner or guardian
     function _requireFromOwnerOrGaurdian() internal view {
         require(
-            msg.sender == owner || msg.sender == address(this),
+            msg.sender == owner() || msg.sender == address(this),
             "account: Not Owner ot guardian"
         );
     }
@@ -132,7 +164,7 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
 
         // Check if module is enabled
         require(
-            EnclaveModuleManager(EnclaveRegistry(enclaveRegistry).getRegistryAddress("moduleManager")).isModuleEnabled(validator),
+            EnclaveModuleManager(EnclaveRegistry(enclaveRegistry()).getRegistryAddress("moduleManager")).isModuleEnabled(validator),
             "Module validation failed"
         );
 
@@ -196,24 +228,24 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
     }
 
     function setSmartBalanceEnabled(bool _smartBalanceEnabled) external onlyOwner {
-        smartBalanceEnabled = _smartBalanceEnabled;
+        SmartAccountV1Storage.layout().smartBalanceEnabled = _smartBalanceEnabled;
         emit SmartBalanceStatusChanged(_smartBalanceEnabled);
     }
 
     modifier onlySmartBalanceConversionManager() {
         require(
             msg.sender == address(this) ||
-            msg.sender == EnclaveRegistry(enclaveRegistry).getRegistryAddress("smartBalanceConversionManager"),
+            msg.sender == EnclaveRegistry(enclaveRegistry()).getRegistryAddress("smartBalanceConversionManager"),
             "Convert: Invalid caller"
         );
         _;
     }
     
     function smartBalanceConvert(address tokenAddress) external onlySmartBalanceConversionManager {
-        require(smartBalanceEnabled, "Convert: Smart balance not enabled");
+        require(smartBalanceEnabled(), "Convert: Smart balance not enabled");
 
         IERC20 smartBalanceToken = IERC20(tokenAddress);
-        IEnclaveTokenVaultV0 vault = IEnclaveTokenVaultV0(EnclaveRegistry(enclaveRegistry).getRegistryAddress("smartBalanceVault"));
+        IEnclaveTokenVaultV0 vault = IEnclaveTokenVaultV0(EnclaveRegistry(enclaveRegistry()).getRegistryAddress("smartBalanceVault"));
         uint256 balance = smartBalanceToken.balanceOf(address(this));
 
         smartBalanceToken.approve(address(vault), balance);
@@ -222,8 +254,8 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
 
     function transferOwnership(address newOwner) external onlyOwner {
         require(newOwner != address(0), "New owner is the zero address");
-        address oldOwner = owner;
-        owner = newOwner;
+        address oldOwner = owner();
+        SmartAccountV1Storage.layout().owner = newOwner;
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 }
