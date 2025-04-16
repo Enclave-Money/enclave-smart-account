@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { IValidator, MODULE_TYPE_VALIDATOR } from "./IERC7579Module.sol";
+import {IValidator, MODULE_TYPE_VALIDATOR} from "./IERC7579Module.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import "../../utils/Base64URL.sol";
@@ -14,6 +14,7 @@ error NotInitialized(address account);
 error ModuleDisabled();
 error InvalidUserOp();
 error VerificationFailed();
+error InvalidCaller();
 
 bytes4 constant ERC1271_MAGICVALUE = 0x1626ba7e;
 bytes4 constant ERC1271_INVALID = 0xffffffff;
@@ -24,13 +25,13 @@ contract MultichainP256Validator is IValidator {
 
     mapping(address => bool) internal isDisabled;
 
-    constructor (address _moduleManager, address _precompile) {
+    constructor(address _moduleManager, address _precompile) {
         moduleManager = EnclaveModuleManager(_moduleManager);
         precompile = _precompile;
     }
 
     function setPrecompile(address _precompile) external {
-        if (!moduleManager.isAdmin(msg.sender)) revert("Invalid caller");
+        if (!moduleManager.isAdmin(msg.sender)) revert InvalidCaller();
         precompile = _precompile;
     }
 
@@ -44,11 +45,15 @@ contract MultichainP256Validator is IValidator {
         isDisabled[msg.sender] = true;
     }
 
-    function isInitialized(address smartAccount) public view override returns (bool) {
+    function isInitialized(
+        address smartAccount
+    ) public view override returns (bool) {
         return !isDisabled[smartAccount];
     }
 
-    function isModuleType(uint256 moduleTypeId) external pure override returns (bool) {
+    function isModuleType(
+        uint256 moduleTypeId
+    ) external pure override returns (bool) {
         return moduleTypeId == MODULE_TYPE_VALIDATOR;
     }
 
@@ -65,7 +70,7 @@ contract MultichainP256Validator is IValidator {
         bytes32 userOpHash
     ) external view virtual returns (uint256) {
         if (isDisabled[userOp.sender]) revert ModuleDisabled();
-        
+
         (
             uint48 validUntil,
             uint48 validAfter,
@@ -82,9 +87,8 @@ contract MultichainP256Validator is IValidator {
             abi.encodePacked(validUntil, validAfter, userOpHash)
         );
 
-        if (!MerkleProof.verify(merkleProof, merkleTreeRoot, leaf)) {
+        if (!MerkleProof.verify(merkleProof, merkleTreeRoot, leaf))
             revert InvalidUserOp();
-        }
 
         (
             bytes32 keyHash,
@@ -94,10 +98,9 @@ contract MultichainP256Validator is IValidator {
             string memory clientDataJSONPre,
             string memory clientDataJSONPost
         ) = abi.decode(
-            multichainSignature,
-            (bytes32, uint256, uint256, bytes, string, string)
-        );
-        (keyHash);
+                multichainSignature,
+                (bytes32, uint256, uint256, bytes, string, string)
+            );
 
         return
             _verifySignature(
@@ -112,12 +115,11 @@ contract MultichainP256Validator is IValidator {
                 : 1;
     }
 
-    function isValidSignatureWithSender(address, bytes32 hash, bytes calldata data)
-        external
-        view
-        override
-        returns (bytes4)
-    {
+    function isValidSignatureWithSender(
+        address,
+        bytes32 hash,
+        bytes calldata data
+    ) external view override returns (bytes4) {
         if (isDisabled[msg.sender]) revert ModuleDisabled();
         if (data.length == 0) {
             return ERC1271_INVALID;
@@ -129,19 +131,15 @@ contract MultichainP256Validator is IValidator {
             bytes32 merkleTreeRoot,
             bytes32[] memory merkleProof,
             bytes memory multichainSignature
-        ) = abi.decode(
-                data,
-                (uint48, uint48, bytes32, bytes32[], bytes)
-            );
+        ) = abi.decode(data, (uint48, uint48, bytes32, bytes32[], bytes));
 
         // Make a leaf out of hash, validUntil and validAfter
         bytes32 leaf = keccak256(
             abi.encodePacked(validUntil, validAfter, hash)
         );
 
-        if (!MerkleProof.verify(merkleProof, merkleTreeRoot, leaf)) {
+        if (!MerkleProof.verify(merkleProof, merkleTreeRoot, leaf))
             return ERC1271_INVALID;
-        }
 
         (
             bytes32 keyHash,
@@ -151,19 +149,21 @@ contract MultichainP256Validator is IValidator {
             string memory clientDataJSONPre,
             string memory clientDataJSONPost
         ) = abi.decode(
-            multichainSignature,
-            (bytes32, uint256, uint256, bytes, string, string)
-        );
-        (keyHash);
+                multichainSignature,
+                (bytes32, uint256, uint256, bytes, string, string)
+            );
 
-        return _verifySignature(
-            authenticatorData,
-            clientDataJSONPre,
-            clientDataJSONPost,
-            merkleTreeRoot,
-            r,
-            s
-        ) ? ERC1271_MAGICVALUE : ERC1271_INVALID;
+        return
+            _verifySignature(
+                authenticatorData,
+                clientDataJSONPre,
+                clientDataJSONPost,
+                merkleTreeRoot,
+                r,
+                s
+            )
+                ? ERC1271_MAGICVALUE
+                : ERC1271_INVALID;
     }
 
     function _verifySignature(
@@ -174,25 +174,25 @@ contract MultichainP256Validator is IValidator {
         uint256 r,
         uint256 s
     ) internal view returns (bool) {
-        // Cache public key values to avoid multiple external calls
-        address sender = msg.sender;
-        uint256 pubKeyX = P256SmartAccountV1(payable(sender)).pubKey(0);
-        uint256 pubKeyY = P256SmartAccountV1(payable(sender)).pubKey(1);
-        
-        string memory opHashBase64 = Base64URL.encode(
-            bytes.concat(userOpHash)
-        );
-
+        string memory opHashBase64 = Base64URL.encode(bytes.concat(userOpHash));
         string memory clientDataJSON = string.concat(
             clientDataJSONPre,
             opHashBase64,
             clientDataJSONPost
         );
-
         bytes32 clientHash = sha256(bytes(clientDataJSON));
         bytes32 sigHash = sha256(bytes.concat(authenticatorData, clientHash));
 
-        return verify(sigHash, r, s, [pubKeyX, pubKeyY]);
+        return
+            verify(
+                sigHash,
+                r,
+                s,
+                [
+                    P256SmartAccountV1(payable(msg.sender)).pubKey(0),
+                    P256SmartAccountV1(payable(msg.sender)).pubKey(1)
+                ]
+            );
     }
 
     function verify(
@@ -202,11 +202,13 @@ contract MultichainP256Validator is IValidator {
         uint256[2] memory pubKey
     ) public view returns (bool) {
         bytes memory input = abi.encodePacked(
-            message_hash, 
-            r, s,
-            pubKey[0], pubKey[1]
+            message_hash,
+            r,
+            s,
+            pubKey[0],
+            pubKey[1]
         );
-            
+
         (bool success, bytes memory output) = precompile.staticcall(input);
 
         if (!success) revert VerificationFailed();

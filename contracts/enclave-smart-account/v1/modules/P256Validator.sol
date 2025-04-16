@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { IValidator, MODULE_TYPE_VALIDATOR } from "./IERC7579Module.sol";
-import { UserOperation } from "@account-abstraction/contracts/interfaces/UserOperation.sol";
-import { Base64URL } from "../../utils/Base64URL.sol";
+import {IValidator, MODULE_TYPE_VALIDATOR} from "./IERC7579Module.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
+import {Base64URL} from "../../utils/Base64URL.sol";
 import "../EnclaveModuleManager.sol";
 import "../P256SmartAccountV1.sol";
 
@@ -23,7 +23,7 @@ contract P256Validator is IValidator {
 
     mapping(address => bool) internal isDisabled;
 
-    constructor (address _moduleManager, address _precompile) {
+    constructor(address _moduleManager, address _precompile) {
         moduleManager = EnclaveModuleManager(_moduleManager);
         precompile = _precompile;
     }
@@ -43,25 +43,24 @@ contract P256Validator is IValidator {
         isDisabled[msg.sender] = true;
     }
 
-    function isInitialized(address smartAccount) public view override returns (bool) {
+    function isInitialized(
+        address smartAccount
+    ) public view override returns (bool) {
         return !isDisabled[smartAccount];
     }
 
-    function isModuleType(uint256 moduleTypeId) external pure override returns (bool) {
+    function isModuleType(
+        uint256 moduleTypeId
+    ) external pure override returns (bool) {
         return moduleTypeId == MODULE_TYPE_VALIDATOR;
     }
 
     function validateUserOp(
         UserOperation calldata userOp,
         bytes32 userOpHash
-    )
-        external
-        view
-        override
-        returns (uint256)
-    {
+    ) external view override returns (uint256) {
         if (isDisabled[userOp.sender]) revert ModuleDisabled();
-        
+
         (
             bytes32 keyHash,
             uint256 r,
@@ -70,34 +69,31 @@ contract P256Validator is IValidator {
             string memory clientDataJSONPre,
             string memory clientDataJSONPost
         ) = abi.decode(
-            userOp.signature,
-            (bytes32, uint256, uint256, bytes, string, string)
-        );
-        (keyHash);
+                userOp.signature,
+                (bytes32, uint256, uint256, bytes, string, string)
+            );
 
-        return _verifySignature(
-            userOp.sender, 
-            authenticatorData, 
-            clientDataJSONPre, 
-            clientDataJSONPost, 
-            userOpHash, 
-            r, 
-            s
-        ) ? 0 : 1;
+        return
+            _verifySignature(
+                userOp.sender,
+                authenticatorData,
+                clientDataJSONPre,
+                clientDataJSONPost,
+                userOpHash,
+                r,
+                s
+            )
+                ? 0
+                : 1;
     }
 
     function isValidSignatureWithSender(
-        address sender, 
-        bytes32 hash, 
+        address sender,
+        bytes32 hash,
         bytes calldata data
-    )
-        external
-        view
-        override
-        returns (bytes4)
-    {
+    ) external view override returns (bytes4) {
         if (isDisabled[sender]) revert ModuleDisabled();
-        
+
         (
             bytes32 keyHash,
             uint256 r,
@@ -106,20 +102,22 @@ contract P256Validator is IValidator {
             string memory clientDataJSONPre,
             string memory clientDataJSONPost
         ) = abi.decode(
-            data,
-            (bytes32, uint256, uint256, bytes, string, string)
-        );
-        (keyHash);
+                data,
+                (bytes32, uint256, uint256, bytes, string, string)
+            );
 
-        return _verifySignature(
-            sender, 
-            authenticatorData, 
-            clientDataJSONPre, 
-            clientDataJSONPost, 
-            hash, 
-            r, 
-            s
-        ) ? ERC1271_MAGICVALUE : ERC1271_INVALID;
+        return
+            _verifySignature(
+                sender,
+                authenticatorData,
+                clientDataJSONPre,
+                clientDataJSONPost,
+                hash,
+                r,
+                s
+            )
+                ? ERC1271_MAGICVALUE
+                : ERC1271_INVALID;
     }
 
     function _verifySignature(
@@ -131,24 +129,25 @@ contract P256Validator is IValidator {
         uint256 r,
         uint256 s
     ) internal view returns (bool) {
-        // Cache public key values to avoid multiple external calls
-        uint256 pubKeyX = P256SmartAccountV1(payable(sender)).pubKey(0);
-        uint256 pubKeyY = P256SmartAccountV1(payable(sender)).pubKey(1);
-        
-        string memory opHashBase64 = Base64URL.encode(
-            bytes.concat(userOpHash)
-        );
-
+        string memory opHashBase64 = Base64URL.encode(bytes.concat(userOpHash));
         string memory clientDataJSON = string.concat(
             clientDataJSONPre,
             opHashBase64,
             clientDataJSONPost
         );
-
         bytes32 clientHash = sha256(bytes(clientDataJSON));
         bytes32 sigHash = sha256(bytes.concat(authenticatorData, clientHash));
 
-        return verify(sigHash, r, s, [pubKeyX, pubKeyY]);
+        return
+            verify(
+                sigHash,
+                r,
+                s,
+                [
+                    P256SmartAccountV1(payable(sender)).pubKey(0),
+                    P256SmartAccountV1(payable(sender)).pubKey(1)
+                ]
+            );
     }
 
     function verify(
@@ -159,11 +158,13 @@ contract P256Validator is IValidator {
     ) public view returns (bool) {
         // Optimize memory usage by combining operations
         bytes memory input = abi.encodePacked(
-            message_hash, 
-            r, s,
-            pubKey[0], pubKey[1]
+            message_hash,
+            r,
+            s,
+            pubKey[0],
+            pubKey[1]
         );
-            
+
         (bool success, bytes memory output) = precompile.staticcall(input);
 
         if (!success) revert VerificationFailed();
