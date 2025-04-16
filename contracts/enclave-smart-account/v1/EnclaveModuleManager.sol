@@ -7,6 +7,7 @@ import "../EnclaveRegistryV0.sol";
 contract EnclaveModuleManager {
     // Interface to the Enclave Registry
     mapping(address => bool) public isAdmin;
+    uint256 public adminCount;
 
     // Mapping to store module states (enabled/disabled)
     mapping(address => bool) public moduleStates;
@@ -14,13 +15,21 @@ contract EnclaveModuleManager {
     // Events
     event ModuleEnabled(address indexed module);
     event ModuleDisabled(address indexed module);
+    event AdminAdded(address indexed admin);
+    event AdminRemoved(address indexed admin);
 
     // Custom errors
     error UnauthorizedCaller();
     error InvalidModuleAddress();
+    error CannotRemoveLastAdmin();
+    error ZeroAddress();
+    error AlreadyAdmin();
+    error NotAdmin();
 
     constructor(address _owner) {
+        if (_owner == address(0)) revert ZeroAddress();
         isAdmin[_owner] = true;
+        adminCount = 1;
     }
 
     modifier _onlyAdmin() {
@@ -31,14 +40,25 @@ contract EnclaveModuleManager {
     }
 
     function addAdmin(address _admin) external _onlyAdmin() {
-        require(_admin != address(0), "MM: Zero address");
-        require(!isAdmin[_admin], "MM: Already admin");
+        if (_admin == address(0)) revert ZeroAddress();
+        if (isAdmin[_admin]) revert AlreadyAdmin();
+        
         isAdmin[_admin] = true;
+        adminCount++;
+        emit AdminAdded(_admin);
     }
 
-    function removeManager(address _admin) external _onlyAdmin() {
-        require(isAdmin[_admin], "MM: Not admin");
+    function removeAdmin(address _admin) external _onlyAdmin() {
+        if (!isAdmin[_admin]) revert NotAdmin();
+        
+        // Prevent removing the last admin
+        if (adminCount <= 1) {
+            revert CannotRemoveLastAdmin();
+        }
+        
         isAdmin[_admin] = false;
+        adminCount--;
+        emit AdminRemoved(_admin);
     }
 
     /**
@@ -50,8 +70,11 @@ contract EnclaveModuleManager {
             revert InvalidModuleAddress();
         }
         
-        moduleStates[moduleAddress] = true;
-        emit ModuleEnabled(moduleAddress);
+        // Skip state update and event emission if already enabled
+        if (!moduleStates[moduleAddress]) {
+            moduleStates[moduleAddress] = true;
+            emit ModuleEnabled(moduleAddress);
+        }
     }
 
     /**
@@ -63,8 +86,11 @@ contract EnclaveModuleManager {
             revert InvalidModuleAddress();
         }
         
-        moduleStates[moduleAddress] = false;
-        emit ModuleDisabled(moduleAddress);
+        // Skip state update and event emission if already disabled
+        if (moduleStates[moduleAddress]) {
+            moduleStates[moduleAddress] = false;
+            emit ModuleDisabled(moduleAddress);
+        }
     }
 
     /**

@@ -21,7 +21,7 @@
     "@types/mocha": "^10.0.6",
     "chai": "^4.4.1",
     "ethers": "^6.12.1",
-    "hardhat": "^2.19.1",
+    "hardhat": "^2.23.0",
     "hardhat-deploy": "^0.12.4",
     "hardhat-gas-reporter": "^1.0.10",
     "mocha": "^10.2.0",
