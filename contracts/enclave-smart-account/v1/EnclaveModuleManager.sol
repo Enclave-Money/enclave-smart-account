@@ -2,11 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../EnclaveRegistry.sol";
+import "../EnclaveRegistryV0.sol";
 
 contract EnclaveModuleManager {
     // Interface to the Enclave Registry
-    EnclaveRegistry public immutable enclaveRegistry;
+    mapping(address => bool) public isAdmin;
 
     // Mapping to store module states (enabled/disabled)
     mapping(address => bool) public moduleStates;
@@ -19,26 +19,33 @@ contract EnclaveModuleManager {
     error UnauthorizedCaller();
     error InvalidModuleAddress();
 
-    constructor(address _enclaveRegistry) {
-        require(_enclaveRegistry != address(0), "Invalid registry address");
-        enclaveRegistry = EnclaveRegistry(_enclaveRegistry);
+    constructor(address _owner) {
+        isAdmin[_owner] = true;
     }
 
-    /**
-     * @dev Modifier to ensure only the registered module manager can call certain functions
-     */
-    modifier onlyModuleManager() {
-        if (msg.sender != enclaveRegistry.getRegistryAddress("moduleManagerEoa")) {
+    modifier _onlyAdmin() {
+        if (!isAdmin[msg.sender]) {
             revert UnauthorizedCaller();
         }
         _;
+    }
+
+    function addAdmin(address _admin) external _onlyAdmin() {
+        require(_admin != address(0), "MM: Zero address");
+        require(!isAdmin[_admin], "MM: Already admin");
+        isAdmin[_admin] = true;
+    }
+
+    function removeManager(address _admin) external _onlyAdmin() {
+        require(isAdmin[_admin], "MM: Not admin");
+        isAdmin[_admin] = false;
     }
 
     /**
      * @dev Enable a module
      * @param moduleAddress The address of the module to enable
      */
-    function enableModule(address moduleAddress) external onlyModuleManager {
+    function enableModule(address moduleAddress) external _onlyAdmin() {
         if (moduleAddress == address(0)) {
             revert InvalidModuleAddress();
         }
@@ -51,7 +58,7 @@ contract EnclaveModuleManager {
      * @dev Disable a module
      * @param moduleAddress The address of the module to disable
      */
-    function disableModule(address moduleAddress) external onlyModuleManager {
+    function disableModule(address moduleAddress) external _onlyAdmin() {
         if (moduleAddress == address(0)) {
             revert InvalidModuleAddress();
         }

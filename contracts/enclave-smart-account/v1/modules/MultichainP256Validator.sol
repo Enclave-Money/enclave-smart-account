@@ -7,19 +7,26 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 import {calldataKeccak, _packValidationData} from "@account-abstraction/contracts/core/Helpers.sol";
 import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import "../../utils/Base64URL.sol";
-import "../../P256V.sol";
-import "../../EnclaveRegistry.sol";
+import "../EnclaveModuleManager.sol";
 import "../P256SmartAccountV1.sol";
 
 bytes4 constant ERC1271_MAGICVALUE = 0x1626ba7e;
 bytes4 constant ERC1271_INVALID = 0xffffffff;
 
 contract MultichainP256Validator is IValidator {
-    EnclaveRegistry enclaveRegistry;
+    EnclaveModuleManager moduleManager;
+    address precompile;
+
     mapping(address => bool) internal isDisabled;
 
-    constructor (address _enclaveRegistry) {
-        enclaveRegistry = EnclaveRegistry(_enclaveRegistry);
+    constructor (address _moduleManager, address _precompile) {
+        moduleManager = EnclaveModuleManager(_moduleManager);
+        precompile = _precompile;
+    }
+
+    function setPrecompile(address _precompile) external {
+        require(moduleManager.isAdmin(msg.sender), "Invalid caller");
+        precompile = _precompile;
     }
 
     function onInstall(bytes calldata) external override {
@@ -174,7 +181,22 @@ contract MultichainP256Validator is IValidator {
         bytes32 clientHash = sha256(bytes(clientDataJSON));
         bytes32 sigHash = sha256(bytes.concat(authenticatorData, clientHash));
 
-        return P256V(EnclaveRegistry(enclaveRegistry).getRegistryAddress("p256Verifier"))
-        .verify(sigHash, r, s, [P256SmartAccountV1(payable(msg.sender)).pubKey(0), P256SmartAccountV1(payable(msg.sender)).pubKey(1)]);
+        return verify(sigHash, r, s, [P256SmartAccountV1(payable(msg.sender)).pubKey(0), P256SmartAccountV1(payable(msg.sender)).pubKey(1)]);
+    }
+
+    function verify(
+        bytes32 message_hash,
+        uint256 r,
+        uint256 s,
+        uint256[2] memory pubKey
+    ) public view returns (bool) {
+        bytes memory publicKey = abi.encodePacked(pubKey[0], pubKey[1]);
+        bytes memory signature = abi.encodePacked(r, s);
+        bytes memory input = abi.encodePacked(message_hash, signature, publicKey);
+            
+        (bool success, bytes memory output) = precompile.staticcall(input);
+
+        require(success, "Verification failed");
+        return abi.decode(output, (bool));
     }
 }

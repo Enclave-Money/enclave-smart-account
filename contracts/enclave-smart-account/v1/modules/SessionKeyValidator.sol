@@ -3,15 +3,9 @@ pragma solidity ^0.8.19;
 
 import { IValidator, MODULE_TYPE_VALIDATOR } from "./IERC7579Module.sol";
 import { UserOperation } from "@account-abstraction/contracts/interfaces/UserOperation.sol";
-import { Base64URL } from "../../utils/Base64URL.sol";
-import "@account-abstraction/contracts/core/Helpers.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "../../EnclaveRegistry.sol";
-import "../../P256V.sol";
-import "../P256SmartAccountV1.sol";
 
 import "hardhat/console.sol";
 
@@ -21,13 +15,8 @@ bytes4 constant ERC1271_INVALID = 0xffffffff;
 contract SessionKeyValidator is IValidator {
     mapping(address => bool) internal isDisabled;
     mapping(address => bytes32) smartAccountSessionKeyRoot;
-    EnclaveRegistry enclaveRegistry;
 
     event RootUpdated(address indexed smartAccount, uint256 indexed timestamp);
-
-    constructor (address _enclaveRegistry) {
-        enclaveRegistry = EnclaveRegistry(_enclaveRegistry);
-    }
 
     function onInstall(bytes calldata) external override {
         if (isInitialized(msg.sender)) revert AlreadyInitialized(msg.sender);

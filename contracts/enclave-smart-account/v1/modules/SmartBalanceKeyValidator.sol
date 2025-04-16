@@ -3,13 +3,9 @@ pragma solidity ^0.8.19;
 
 import { IValidator, MODULE_TYPE_VALIDATOR } from "./IERC7579Module.sol";
 import { UserOperation } from "@account-abstraction/contracts/interfaces/UserOperation.sol";
-import { Base64URL } from "../../utils/Base64URL.sol";
-import "@account-abstraction/contracts/core/Helpers.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "../../P256V.sol";
-import "../P256SmartAccountV1.sol";
+import "../../EnclaveRegistryV0.sol";
 
 import "hardhat/console.sol";
 
@@ -17,12 +13,14 @@ bytes4 constant ERC1271_MAGICVALUE = 0x1626ba7e;
 bytes4 constant ERC1271_INVALID = 0xffffffff;
 bytes4 constant SMART_BALANCE_CONVERT_SELECTOR = 0xf7558a84;
 
+bytes32 constant SMART_BALANCE_CONVERSION_MANAGER = keccak256(abi.encodePacked("smartBalanceConversionManager"));
+
 contract SmartBalanceKeyValidator is IValidator {
-    EnclaveRegistry enclaveRegistry;
+    EnclaveRegistryV0 enclaveRegistry;
     mapping(address => bool) internal isDisabled;
 
     constructor (address _enclaveRegistry) {
-        enclaveRegistry = EnclaveRegistry(_enclaveRegistry);
+        enclaveRegistry = EnclaveRegistryV0(_enclaveRegistry);
     }
 
     function onInstall(bytes calldata) external override {
@@ -74,7 +72,7 @@ contract SmartBalanceKeyValidator is IValidator {
         }
 
         bytes32 hash = ECDSA.toEthSignedMessageHash(userOpHash);
-        address smartBalManager = enclaveRegistry.getRegistryAddress("smartBalanceConversionManager");
+        address smartBalManager = enclaveRegistry.getRegistryAddress(SMART_BALANCE_CONVERSION_MANAGER);
         console.log("smartBalManager: ", smartBalManager);
         console.log("Recovered Addr: ", ECDSA.recover(hash, userOp.signature));
         if (smartBalManager != ECDSA.recover(hash, userOp.signature)) {
@@ -95,7 +93,7 @@ contract SmartBalanceKeyValidator is IValidator {
         require(!isDisabled[msg.sender], "Module is disabled");
         
         bytes32 ethHash = ECDSA.toEthSignedMessageHash(hash);
-        if (enclaveRegistry.getRegistryAddress("smartBalanceConversionManager") != ECDSA.recover(ethHash, sig)) {
+        if (enclaveRegistry.getRegistryAddress(SMART_BALANCE_CONVERSION_MANAGER) != ECDSA.recover(ethHash, sig)) {
             return ERC1271_INVALID;
         }
         return ERC1271_MAGICVALUE;

@@ -14,7 +14,7 @@ import "@account-abstraction/contracts/core/Helpers.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
-import "../EnclaveRegistry.sol";
+import "../EnclaveRegistryV0.sol";
 import "./EnclaveModuleManager.sol";
 
 interface IEnclaveVirtualLiquidityVault {
@@ -22,6 +22,11 @@ interface IEnclaveVirtualLiquidityVault {
 }
 
 import "hardhat/console.sol";
+
+bytes32 constant ENTRYPOINT = keccak256(abi.encodePacked("entryPoint"));
+bytes32 constant SMART_BALANCE_CONVERSION_MANAGER = keccak256(abi.encodePacked("smartBalanceConversionManager"));
+bytes32 constant SMART_BALANCE_VAULT = keccak256(abi.encodePacked("smartBalanceVault"));
+bytes32 constant MODULE_MANAGER = keccak256(abi.encodePacked("moduleManager"));
 
 /**
  * @dev ERC-7201 storage layout namespace
@@ -60,7 +65,7 @@ contract P256SmartAccountV1 is
     modifier onlySmartBalanceConversionManager() {
         require(
             msg.sender == address(this) ||
-            msg.sender == EnclaveRegistry(enclaveRegistry()).getRegistryAddress("smartBalanceConversionManager"),
+            msg.sender == EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(SMART_BALANCE_CONVERSION_MANAGER),
             "Convert: Invalid caller"
         );
         _;
@@ -80,8 +85,8 @@ contract P256SmartAccountV1 is
 
     /// @inheritdoc BaseAccount
     function entryPoint() public view virtual override returns (IEntryPoint) {
-        address _entryPoint = EnclaveRegistry(enclaveRegistry())
-            .getRegistryAddress("entryPoint");
+        address _entryPoint = EnclaveRegistryV0(enclaveRegistry())
+            .getRegistryAddress(ENTRYPOINT);
         return IEntryPoint(_entryPoint);
     }
 
@@ -164,7 +169,7 @@ contract P256SmartAccountV1 is
 
         // Check if module is enabled
         require(
-            EnclaveModuleManager(EnclaveRegistry(enclaveRegistry()).getRegistryAddress("moduleManager")).isModuleEnabled(validator),
+            EnclaveModuleManager(EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(MODULE_MANAGER)).isModuleEnabled(validator),
             "Module validation failed"
         );
 
@@ -211,7 +216,7 @@ contract P256SmartAccountV1 is
     function smartBalanceConvert(address tokenAddress) external onlySmartBalanceConversionManager {
         require(smartBalanceEnabled(), "Convert: Smart balance not enabled");
 
-        IEnclaveVirtualLiquidityVault vault = IEnclaveVirtualLiquidityVault(EnclaveRegistry(enclaveRegistry()).getRegistryAddress("smartBalanceVault"));
+        IEnclaveVirtualLiquidityVault vault = IEnclaveVirtualLiquidityVault(EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(SMART_BALANCE_VAULT));
         
         if (tokenAddress == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
             // For native token (ETH), send the entire balance
@@ -245,7 +250,7 @@ contract P256SmartAccountV1 is
         (address validator, bytes memory actualSignature) = abi.decode(signature, (address, bytes));
 
         // Check if module is enabled
-        if (!EnclaveModuleManager(EnclaveRegistry(enclaveRegistry()).getRegistryAddress("moduleManager")).isModuleEnabled(validator)) {
+        if (!EnclaveModuleManager(EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(MODULE_MANAGER)).isModuleEnabled(validator)) {
             return 0xffffffff;
         }
 

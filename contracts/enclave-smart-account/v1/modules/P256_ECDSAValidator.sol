@@ -4,7 +4,6 @@ pragma solidity ^0.8.19;
 import { IValidator, MODULE_TYPE_VALIDATOR } from "./IERC7579Module.sol";
 import { UserOperation } from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "../../P256V.sol";
 
 import "hardhat/console.sol";
 
