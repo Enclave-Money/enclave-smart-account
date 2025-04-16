@@ -13,6 +13,7 @@ import "@account-abstraction/contracts/core/BaseAccount.sol";
 import "@account-abstraction/contracts/core/Helpers.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "../EnclaveRegistryV0.sol";
 import "./EnclaveModuleManager.sol";
@@ -21,11 +22,13 @@ interface IEnclaveVirtualLiquidityVault {
     function deposit(address tokenAddress, uint256 amount) external payable;
 }
 
-import "hardhat/console.sol";
-
 bytes32 constant ENTRYPOINT = keccak256(abi.encodePacked("entryPoint"));
-bytes32 constant SMART_BALANCE_CONVERSION_MANAGER = keccak256(abi.encodePacked("smartBalanceConversionManager"));
-bytes32 constant SMART_BALANCE_VAULT = keccak256(abi.encodePacked("smartBalanceVault"));
+bytes32 constant SMART_BALANCE_CONVERSION_MANAGER = keccak256(
+    abi.encodePacked("smartBalanceConversionManager")
+);
+bytes32 constant SMART_BALANCE_VAULT = keccak256(
+    abi.encodePacked("smartBalanceVault")
+);
 bytes32 constant MODULE_MANAGER = keccak256(abi.encodePacked("moduleManager"));
 
 /**
@@ -39,9 +42,15 @@ library P256SmartAccountV1Storage {
         uint256[2] pubKey;
     }
 
-    bytes32 private constant STORAGE_SLOT = keccak256(abi.encode(keccak256("enclave.storage.P256SmartAccountV1"))) & bytes32(type(uint256).max - 0xFF);
+    bytes32 private constant STORAGE_SLOT =
+        keccak256(abi.encode(keccak256("enclave.storage.P256SmartAccountV1"))) &
+            bytes32(type(uint256).max - 0xFF);
 
-    function p256SmartAccountLayoutV1() internal pure returns (P256SmartAccountV1Layout storage l) {
+    function p256SmartAccountLayoutV1()
+        internal
+        pure
+        returns (P256SmartAccountV1Layout storage l)
+    {
         bytes32 slot = STORAGE_SLOT;
         assembly {
             l.slot := slot
@@ -53,34 +62,62 @@ contract P256SmartAccountV1 is
     BaseAccount,
     UUPSUpgradeable,
     Initializable,
-    IERC1271
+    IERC1271,
+    ReentrancyGuard
 {
     using ECDSA for bytes32;
 
+    // Custom errors
+    error NotOwner();
+    error NotEntryPointOrOwner();
+    error NotAuthorizedForSmartBalance();
+    error SmartBalanceDisabled();
+    error NoTokenBalance();
+    error ArrayLengthMismatch();
+    error ModuleNotEnabled();
+    error ZeroAddressImplementation();
+    error SignatureValidationFailed();
+
     modifier onlyOwner() {
-        _onlyOwner();
+        if (msg.sender != address(this)) revert NotOwner();
+        _;
+    }
+
+    modifier requireFromEntryPointOrOwner() {
+        if (msg.sender != address(entryPoint()) && msg.sender != address(this))
+            revert NotEntryPointOrOwner();
         _;
     }
 
     modifier onlySmartBalanceConversionManager() {
-        require(
-            msg.sender == address(this) ||
-            msg.sender == EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(SMART_BALANCE_CONVERSION_MANAGER),
-            "Convert: Invalid caller"
-        );
+        if (
+            msg.sender != address(this) &&
+            msg.sender !=
+            EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(
+                SMART_BALANCE_CONVERSION_MANAGER
+            )
+        ) revert NotAuthorizedForSmartBalance();
+
         _;
     }
 
     function smartBalanceEnabled() public view returns (bool) {
-        return P256SmartAccountV1Storage.p256SmartAccountLayoutV1().smartBalanceEnabled;
+        return
+            P256SmartAccountV1Storage
+                .p256SmartAccountLayoutV1()
+                .smartBalanceEnabled;
     }
 
     function enclaveRegistry() public view returns (address) {
-        return P256SmartAccountV1Storage.p256SmartAccountLayoutV1().enclaveRegistry;
+        return
+            P256SmartAccountV1Storage
+                .p256SmartAccountLayoutV1()
+                .enclaveRegistry;
     }
 
     function pubKey(uint _index) public view returns (uint256) {
-        return P256SmartAccountV1Storage.p256SmartAccountLayoutV1().pubKey[_index];
+        return
+            P256SmartAccountV1Storage.p256SmartAccountLayoutV1().pubKey[_index];
     }
 
     /// @inheritdoc BaseAccount
@@ -97,19 +134,11 @@ contract P256SmartAccountV1 is
         _disableInitializers();
     }
 
-    function _onlyOwner() internal view {
-        require(
-            msg.sender == address(this),
-            "only owner"
-        );
-    }
-
     function execute(
         address dest,
         uint256 value,
         bytes calldata func
-    ) external {
-        _requireFromEntryPointOrOwner();
+    ) external requireFromEntryPointOrOwner {
         _call(dest, value, func);
     }
 
@@ -117,19 +146,22 @@ contract P256SmartAccountV1 is
         address[] calldata dest,
         uint256[] calldata value,
         bytes[] calldata func
-    ) external {
-        _requireFromEntryPointOrOwner();
-        require(
-            dest.length == func.length &&
-                (value.length == 0 || value.length == func.length),
-            "wrong array lengths"
-        );
-        if (value.length == 0) {
-            for (uint256 i = 0; i < dest.length; i++) {
+    ) external requireFromEntryPointOrOwner {
+        uint256 destLength = dest.length;
+        uint256 valueLength = value.length;
+        uint256 funcLength = func.length;
+
+        if (
+            destLength != funcLength ||
+            (valueLength != 0 && valueLength != funcLength)
+        ) revert ArrayLengthMismatch();
+
+        if (valueLength == 0) {
+            for (uint256 i = 0; i < destLength; i++) {
                 _call(dest[i], 0, func[i]);
             }
         } else {
-            for (uint256 i = 0; i < dest.length; i++) {
+            for (uint256 i = 0; i < destLength; i++) {
                 _call(dest[i], value[i], func[i]);
             }
         }
@@ -148,16 +180,12 @@ contract P256SmartAccountV1 is
         address _enclaveRegistry,
         bool _smartBalanceEnabled
     ) internal virtual {
-        P256SmartAccountV1Storage.p256SmartAccountLayoutV1().enclaveRegistry = _enclaveRegistry;
-        P256SmartAccountV1Storage.p256SmartAccountLayoutV1().pubKey = _pubKey;
-        P256SmartAccountV1Storage.p256SmartAccountLayoutV1().smartBalanceEnabled = _smartBalanceEnabled;
-    }
-
-    function _requireFromEntryPointOrOwner() internal view {
-        require(
-            msg.sender == address(entryPoint()) || msg.sender == address(this),
-            "account: not Owner or EntryPoint"
-        );
+        P256SmartAccountV1Storage.P256SmartAccountV1Layout
+            storage layout = P256SmartAccountV1Storage
+                .p256SmartAccountLayoutV1();
+        layout.enclaveRegistry = _enclaveRegistry;
+        layout.pubKey = _pubKey;
+        layout.smartBalanceEnabled = _smartBalanceEnabled;
     }
 
     function _validateSignature(
@@ -165,18 +193,21 @@ contract P256SmartAccountV1 is
         bytes32 userOpHash
     ) internal virtual override returns (uint256 validationData) {
         // Decode the validator address and actual signature from userOp.signature
-        (address validator, bytes memory actualSignature) = abi.decode(userOp.signature, (address, bytes));
+        (address validator, bytes memory actualSignature) = abi.decode(
+            userOp.signature,
+            (address, bytes)
+        );
 
         // Check if module is enabled
-        require(
-            EnclaveModuleManager(EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(MODULE_MANAGER)).isModuleEnabled(validator),
-            "Module validation failed"
-        );
+        address moduleManagerAddr = EnclaveRegistryV0(enclaveRegistry())
+            .getRegistryAddress(MODULE_MANAGER);
+        if (!EnclaveModuleManager(moduleManagerAddr).isModuleEnabled(validator))
+            revert ModuleNotEnabled();
 
         // Create modified UserOperation with actual signature
         UserOperation memory modifiedUserOp = userOp;
         modifiedUserOp.signature = actualSignature;
-    
+
         // Call the validator's validateUserOp function
         (bool success, bytes memory result) = validator.call(
             abi.encodeWithSignature(
@@ -186,16 +217,11 @@ contract P256SmartAccountV1 is
             )
         );
 
-        console.log("Success: ", success);
-
-        uint256 res = abi.decode(result, (uint256));
-        console.log("Result: ", res);
-        
         // If the call failed or returned invalid data, return validation failed
         if (!success || result.length != 32) {
             return SIG_VALIDATION_FAILED;
         }
-        
+
         // Return the validation result from the validator
         return abi.decode(result, (uint256));
     }
@@ -209,34 +235,49 @@ contract P256SmartAccountV1 is
         }
     }
 
-    function setSmartBalanceEnabled(bool _smartBalanceEnabled) external onlyOwner {
-        P256SmartAccountV1Storage.p256SmartAccountLayoutV1().smartBalanceEnabled = _smartBalanceEnabled;
+    function setSmartBalanceEnabled(
+        bool _smartBalanceEnabled
+    ) external onlyOwner {
+        P256SmartAccountV1Storage
+            .p256SmartAccountLayoutV1()
+            .smartBalanceEnabled = _smartBalanceEnabled;
     }
-    
-    function smartBalanceConvert(address tokenAddress) external onlySmartBalanceConversionManager {
-        require(smartBalanceEnabled(), "Convert: Smart balance not enabled");
 
-        IEnclaveVirtualLiquidityVault vault = IEnclaveVirtualLiquidityVault(EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(SMART_BALANCE_VAULT));
-        
-        if (tokenAddress == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
+    function smartBalanceConvert(
+        address tokenAddress
+    ) external nonReentrant onlySmartBalanceConversionManager {
+        if (!smartBalanceEnabled()) revert SmartBalanceDisabled();
+
+        address registryAddr = enclaveRegistry();
+        IEnclaveVirtualLiquidityVault vault = IEnclaveVirtualLiquidityVault(
+            EnclaveRegistryV0(registryAddr).getRegistryAddress(
+                SMART_BALANCE_VAULT
+            )
+        );
+
+        if (
+            tokenAddress == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)
+        ) {
             // For native token (ETH), send the entire balance
             uint256 balance = address(this).balance;
-            require(balance > 0, "No native token balance to convert");
+            if (balance == 0) revert NoTokenBalance();
+
             vault.deposit{value: balance}(tokenAddress, balance);
         } else {
             // For ERC20 tokens
             IERC20 token = IERC20(tokenAddress);
             uint256 balance = token.balanceOf(address(this));
-            require(balance > 0, "No token balance to convert");
-            
+            if (balance == 0) revert NoTokenBalance();
+
             token.approve(address(vault), balance);
             vault.deposit(tokenAddress, balance);
         }
     }
 
-    function _authorizeUpgrade(address newImplementation) internal view override {
-        (newImplementation);
-        _requireFromEntryPointOrOwner();
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal view override requireFromEntryPointOrOwner {
+        if (newImplementation == address(0)) revert ZeroAddressImplementation();
     }
 
     /**
@@ -245,14 +286,23 @@ contract P256SmartAccountV1 is
      * @param signature The signature to validate
      * @return The magic value if the signature is valid, 0xffffffff otherwise
      */
-    function isValidSignature(bytes32 hash, bytes memory signature) external view returns (bytes4) {
+    function isValidSignature(
+        bytes32 hash,
+        bytes memory signature
+    ) external view returns (bytes4) {
         // Decode the validator address and actual signature
-        (address validator, bytes memory actualSignature) = abi.decode(signature, (address, bytes));
+        (address validator, bytes memory actualSignature) = abi.decode(
+            signature,
+            (address, bytes)
+        );
+
+        address registryAddr = enclaveRegistry();
+        address moduleManagerAddr = EnclaveRegistryV0(registryAddr)
+            .getRegistryAddress(MODULE_MANAGER);
 
         // Check if module is enabled
-        if (!EnclaveModuleManager(EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(MODULE_MANAGER)).isModuleEnabled(validator)) {
+        if (!EnclaveModuleManager(moduleManagerAddr).isModuleEnabled(validator))
             return 0xffffffff;
-        }
 
         // Call the validator's isValidSignature function
         (bool success, bytes memory result) = validator.staticcall(
