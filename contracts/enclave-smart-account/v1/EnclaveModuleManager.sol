@@ -28,36 +28,35 @@ contract EnclaveModuleManager {
 
     constructor(address _owner) {
         if (_owner == address(0)) revert ZeroAddress();
+        
         isAdmin[_owner] = true;
         adminCount = 1;
+
+        emit AdminAdded(_owner);
     }
 
     modifier _onlyAdmin() {
-        if (!isAdmin[msg.sender]) {
-            revert UnauthorizedCaller();
-        }
+        if (!isAdmin[msg.sender]) revert UnauthorizedCaller();
         _;
     }
 
-    function addAdmin(address _admin) external _onlyAdmin() {
+    function addAdmin(address _admin) external _onlyAdmin {
         if (_admin == address(0)) revert ZeroAddress();
         if (isAdmin[_admin]) revert AlreadyAdmin();
-        
+
         isAdmin[_admin] = true;
         adminCount++;
+
         emit AdminAdded(_admin);
     }
 
-    function removeAdmin(address _admin) external _onlyAdmin() {
+    function removeAdmin(address _admin) external _onlyAdmin {
         if (!isAdmin[_admin]) revert NotAdmin();
-        
-        // Prevent removing the last admin
-        if (adminCount <= 1) {
-            revert CannotRemoveLastAdmin();
-        }
+        if (adminCount <= 1) revert CannotRemoveLastAdmin();
         
         isAdmin[_admin] = false;
         adminCount--;
+
         emit AdminRemoved(_admin);
     }
 
@@ -65,11 +64,9 @@ contract EnclaveModuleManager {
      * @dev Enable a module
      * @param moduleAddress The address of the module to enable
      */
-    function enableModule(address moduleAddress) external _onlyAdmin() {
-        if (moduleAddress == address(0)) {
-            revert InvalidModuleAddress();
-        }
-        
+    function enableModule(address moduleAddress) external _onlyAdmin {
+        if (moduleAddress == address(0)) revert InvalidModuleAddress();
+
         // Skip state update and event emission if already enabled
         if (!moduleStates[moduleAddress]) {
             moduleStates[moduleAddress] = true;
@@ -81,11 +78,9 @@ contract EnclaveModuleManager {
      * @dev Disable a module
      * @param moduleAddress The address of the module to disable
      */
-    function disableModule(address moduleAddress) external _onlyAdmin() {
-        if (moduleAddress == address(0)) {
-            revert InvalidModuleAddress();
-        }
-        
+    function disableModule(address moduleAddress) external _onlyAdmin {
+        if (moduleAddress == address(0)) revert InvalidModuleAddress();
+
         // Skip state update and event emission if already disabled
         if (moduleStates[moduleAddress]) {
             moduleStates[moduleAddress] = false;
@@ -98,7 +93,9 @@ contract EnclaveModuleManager {
      * @param moduleAddress The address of the module to check
      * @return bool indicating if the module is enabled
      */
-    function isModuleEnabled(address moduleAddress) external view returns (bool) {
+    function isModuleEnabled(
+        address moduleAddress
+    ) external view returns (bool) {
         return moduleStates[moduleAddress];
     }
 }
