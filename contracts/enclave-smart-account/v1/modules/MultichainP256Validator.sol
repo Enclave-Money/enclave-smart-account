@@ -2,20 +2,25 @@
 pragma solidity ^0.8.19;
 
 import { IValidator, MODULE_TYPE_VALIDATOR } from "./IERC7579Module.sol";
-import {UserOperationLib} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import {calldataKeccak, _packValidationData} from "@account-abstraction/contracts/core/Helpers.sol";
 import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import "../../utils/Base64URL.sol";
 import "../EnclaveModuleManager.sol";
 import "../P256SmartAccountV1.sol";
 
+// Custom errors
+error AlreadyInitialized(address account);
+error NotInitialized(address account);
+error ModuleDisabled();
+error InvalidUserOp();
+error VerificationFailed();
+
 bytes4 constant ERC1271_MAGICVALUE = 0x1626ba7e;
 bytes4 constant ERC1271_INVALID = 0xffffffff;
 
 contract MultichainP256Validator is IValidator {
-    EnclaveModuleManager moduleManager;
-    address precompile;
+    EnclaveModuleManager immutable moduleManager;
+    address public precompile;
 
     mapping(address => bool) internal isDisabled;
 
@@ -25,7 +30,7 @@ contract MultichainP256Validator is IValidator {
     }
 
     function setPrecompile(address _precompile) external {
-        require(moduleManager.isAdmin(msg.sender), "Invalid caller");
+        if (!moduleManager.isAdmin(msg.sender)) revert("Invalid caller");
         precompile = _precompile;
     }
 
@@ -59,7 +64,8 @@ contract MultichainP256Validator is IValidator {
         UserOperation calldata userOp,
         bytes32 userOpHash
     ) external view virtual returns (uint256) {
-        require(!isDisabled[userOp.sender], "Module is disabled");
+        if (isDisabled[userOp.sender]) revert ModuleDisabled();
+        
         (
             uint48 validUntil,
             uint48 validAfter,
@@ -77,7 +83,7 @@ contract MultichainP256Validator is IValidator {
         );
 
         if (!MerkleProof.verify(merkleProof, merkleTreeRoot, leaf)) {
-            revert("Invalid UserOp");
+            revert InvalidUserOp();
         }
 
         (
@@ -112,7 +118,7 @@ contract MultichainP256Validator is IValidator {
         override
         returns (bytes4)
     {
-        require(!isDisabled[msg.sender], "Module is disabled");
+        if (isDisabled[msg.sender]) revert ModuleDisabled();
         if (data.length == 0) {
             return ERC1271_INVALID;
         }
@@ -168,6 +174,11 @@ contract MultichainP256Validator is IValidator {
         uint256 r,
         uint256 s
     ) internal view returns (bool) {
+        // Cache public key values to avoid multiple external calls
+        address sender = msg.sender;
+        uint256 pubKeyX = P256SmartAccountV1(payable(sender)).pubKey(0);
+        uint256 pubKeyY = P256SmartAccountV1(payable(sender)).pubKey(1);
+        
         string memory opHashBase64 = Base64URL.encode(
             bytes.concat(userOpHash)
         );
@@ -181,7 +192,7 @@ contract MultichainP256Validator is IValidator {
         bytes32 clientHash = sha256(bytes(clientDataJSON));
         bytes32 sigHash = sha256(bytes.concat(authenticatorData, clientHash));
 
-        return verify(sigHash, r, s, [P256SmartAccountV1(payable(msg.sender)).pubKey(0), P256SmartAccountV1(payable(msg.sender)).pubKey(1)]);
+        return verify(sigHash, r, s, [pubKeyX, pubKeyY]);
     }
 
     function verify(
@@ -190,13 +201,15 @@ contract MultichainP256Validator is IValidator {
         uint256 s,
         uint256[2] memory pubKey
     ) public view returns (bool) {
-        bytes memory publicKey = abi.encodePacked(pubKey[0], pubKey[1]);
-        bytes memory signature = abi.encodePacked(r, s);
-        bytes memory input = abi.encodePacked(message_hash, signature, publicKey);
+        bytes memory input = abi.encodePacked(
+            message_hash, 
+            r, s,
+            pubKey[0], pubKey[1]
+        );
             
         (bool success, bytes memory output) = precompile.staticcall(input);
 
-        require(success, "Verification failed");
+        if (!success) revert VerificationFailed();
         return abi.decode(output, (bool));
     }
 }
