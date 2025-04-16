@@ -91,7 +91,7 @@ contract MultichainP256Validator is IValidator {
             revert InvalidUserOp();
 
         (
-            bytes32 keyHash,
+            ,
             uint256 r,
             uint256 s,
             bytes memory authenticatorData,
@@ -142,7 +142,7 @@ contract MultichainP256Validator is IValidator {
             return ERC1271_INVALID;
 
         (
-            bytes32 keyHash,
+            ,
             uint256 r,
             uint256 s,
             bytes memory authenticatorData,

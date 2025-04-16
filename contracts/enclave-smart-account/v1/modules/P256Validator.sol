@@ -62,7 +62,7 @@ contract P256Validator is IValidator {
         if (isDisabled[userOp.sender]) revert ModuleDisabled();
 
         (
-            bytes32 keyHash,
+            ,
             uint256 r,
             uint256 s,
             bytes memory authenticatorData,
@@ -95,7 +95,7 @@ contract P256Validator is IValidator {
         if (isDisabled[sender]) revert ModuleDisabled();
 
         (
-            bytes32 keyHash,
+            ,
             uint256 r,
             uint256 s,
             bytes memory authenticatorData,
