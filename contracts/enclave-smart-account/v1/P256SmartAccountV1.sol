@@ -67,18 +67,6 @@ contract P256SmartAccountV1 is
 {
     using ECDSA for bytes32;
 
-    // Events
-    event SmartBalanceStatusChanged(bool enabled);
-    event ExecutionSuccess(address indexed dest, uint256 value);
-    event BatchExecutionSuccess(uint256 batchSize);
-    event AccountInitialized(
-        uint256[2] pubKey,
-        address enclaveRegistry,
-        bool smartBalanceEnabled
-    );
-    event SmartBalanceConverted(address indexed token, uint256 amount);
-    event AccountUpgraded(address indexed implementation);
-
     // Custom errors
     error NotOwner();
     error NotEntryPointOrOwner();
@@ -152,8 +140,6 @@ contract P256SmartAccountV1 is
         bytes calldata func
     ) external requireFromEntryPointOrOwner {
         _call(dest, value, func);
-
-        emit ExecutionSuccess(dest, value);
     }
 
     function executeBatch(
@@ -179,8 +165,6 @@ contract P256SmartAccountV1 is
                 _call(dest[i], value[i], func[i]);
             }
         }
-
-        emit BatchExecutionSuccess(destLength);
     }
 
     function initialize(
@@ -202,12 +186,6 @@ contract P256SmartAccountV1 is
         layout.enclaveRegistry = _enclaveRegistry;
         layout.pubKey = _pubKey;
         layout.smartBalanceEnabled = _smartBalanceEnabled;
-
-        emit AccountInitialized(
-            _pubKey,
-            _enclaveRegistry,
-            _smartBalanceEnabled
-        );
     }
 
     function _validateSignature(
@@ -263,8 +241,6 @@ contract P256SmartAccountV1 is
         P256SmartAccountV1Storage
             .p256SmartAccountLayoutV1()
             .smartBalanceEnabled = _smartBalanceEnabled;
-
-        emit SmartBalanceStatusChanged(_smartBalanceEnabled);
     }
 
     function smartBalanceConvert(
@@ -287,8 +263,6 @@ contract P256SmartAccountV1 is
             if (balance == 0) revert NoTokenBalance();
 
             vault.deposit{value: balance}(tokenAddress, balance);
-
-            emit SmartBalanceConverted(address(0), balance);
         } else {
             // For ERC20 tokens
             IERC20 token = IERC20(tokenAddress);
@@ -297,8 +271,6 @@ contract P256SmartAccountV1 is
 
             token.approve(address(vault), balance);
             vault.deposit(tokenAddress, balance);
-
-            emit SmartBalanceConverted(tokenAddress, balance);
         }
     }
 
