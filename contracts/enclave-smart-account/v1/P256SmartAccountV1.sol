@@ -276,7 +276,7 @@ contract P256SmartAccountV1 is
 
     function _authorizeUpgrade(
         address newImplementation
-    ) internal view override requireFromEntryPointOrOwner {
+    ) internal view override onlyOwner {
         if (newImplementation == address(0)) revert ZeroAddressImplementation();
     }
 
