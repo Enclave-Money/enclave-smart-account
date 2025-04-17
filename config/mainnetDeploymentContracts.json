@@ -11,6 +11,12 @@
         "switchboards": {
           "FAST": "0xd5e829827F665c42326EAF68Da3360bd59b42f2f"
         }
+      },
+      "moduleManager": "",
+      "accountModules": {
+        "p256Validator": "",
+        "smartBalanceKeyValidator": "",
+        "simpleSessionKeyValidator": ""
       }
     },
     "10": {
@@ -25,6 +31,12 @@
         "switchboards": {
           "FAST": "0x09A6e77912a6bcFc3abfDfb841A85380Bb2A8B97"
         }
+      },
+      "moduleManager": "",
+      "accountModules": {
+        "p256Validator": "",
+        "smartBalanceKeyValidator": "",
+        "simpleSessionKeyValidator": ""
       }
     },
     "8453": {
@@ -39,6 +51,12 @@
         "switchboards": {
           "FAST": "0x957301825Dc21d4A92919C9E72dC9E6C6a29e7f8"
         }
+      },
+      "moduleManager": "",
+      "accountModules": {
+        "p256Validator": "",
+        "smartBalanceKeyValidator": "",
+        "simpleSessionKeyValidator": ""
       }
     }
   }
