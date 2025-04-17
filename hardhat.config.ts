@@ -31,19 +31,26 @@ function getNetworkTestBalance(url: string) {
 }
 
 // Only use for prod deployments of Registry and Account Factory, other contracts need to be done with PRIVATE_KEY_2
-function getNetworkProd(url: string) {
-  return {
-    url,
-    // accounts: [process.env.REGISTRY_DEPLOYMENT_KEY as string] // Change after registry and factory deployment
-    accounts: [process.env.SMART_ACC_DEP_KEY as string] // SmartAccountFactoryV1 deployment
-  };
-}
+// function getNetworkProd(url: string) {
+//   return {
+//     url,
+//     // accounts: [process.env.REGISTRY_DEPLOYMENT_KEY as string] // Change after registry and factory deployment
+//     accounts: [process.env.SMART_ACC_DEP_KEY as string] // SmartAccountFactoryV1 deployment
+//   };
+// }
 
 function getNetworkMaster(url: string) {
   return {
     url,
     // accounts: [process.env.REGISTRY_DEPLOYMENT_KEY as string] // Change after registry and factory deployment
     accounts: [process.env.PRIVATE_KEY_MASTER as string] // SmartAccountFactoryV1 deployment
+  };
+}
+
+function getNetworkReg(url: string) {
+  return {
+    url,
+    accounts: [process.env.REGISTRY_DEPLOYMENT_KEY as string] // Change after registry and factory deployment
   };
 }
 
@@ -148,18 +155,22 @@ const config: HardhatUserConfig = {
     basemain: getNetwork1("https://1rpc.io/base"),
     avaxmain: getNetwork1("https://avalanche-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
 
-    ethmain2: getNetworkProd("https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
-    opmain2: getNetworkProd("https://optimism-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
-    arbmain2: getNetworkProd("https://arbitrum-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
-    // polymain2: getNetwork1("https://polygon-mainnet.infura.io/v3/16fb3743839e4f80841b0401a68a020f"),
-    basemain2: getNetworkProd("https://1rpc.io/base"),
-    avaxmain2: getNetworkProd("https://avalanche-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    // ethmain2: getNetworkProd("https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    // opmain2: getNetworkProd("https://optimism-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    // arbmain2: getNetworkProd("https://arbitrum-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    // // polymain2: getNetwork1("https://polygon-mainnet.infura.io/v3/16fb3743839e4f80841b0401a68a020f"),
+    // basemain2: getNetworkProd("https://1rpc.io/base"),
+    // avaxmain2: getNetworkProd("https://avalanche-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
 
 
 
     opMaster: getNetworkMaster("https://optimism-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
     arbMaster: getNetworkMaster("https://arbitrum-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
     baseMaster: getNetworkMaster("https://1rpc.io/base"),
+
+    opRegDeployment: getNetworkReg("https://optimism-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    arbRegDeployment: getNetworkReg("https://arbitrum-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    baseRegDeployment: getNetworkReg("https://1rpc.io/base"),
   
     // bnbmain: getNetworkProd("https://bsc-mainnet.infura.io/v3/16fb3743839e4f80841b0401a68a020f"),  
     // scrollmain: {},

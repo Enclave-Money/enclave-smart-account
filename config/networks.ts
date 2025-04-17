@@ -9,3 +9,10 @@ export const ETH_MAIN_SLUG = 1;
 export const OP_MAIN_SLUG = 10;
 export const BASE_MAIN_SLUG = 8453;
 export const ARB_MAIN_SLUG = 42161;
+
+export const mainnetSlugs = [
+    // ETH_MAIN_SLUG,
+    OP_MAIN_SLUG,
+    BASE_MAIN_SLUG,
+    ARB_MAIN_SLUG
+]
