@@ -14,12 +14,18 @@
       },
       "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
       "moduleManager": "0x23235683a76dF82A5E4f636b385De85122187d90",
-      "accountModules": {
-        "p256Validator": "",
-        "smartBalanceKeyValidator": "",
-        "simpleSessionKeyValidator": ""
+      "accountFactories": {
+        "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
+        "smartAccountV1": ""
       },
-      "precompile": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
+      "accountModules": {
+        "p256Validator": "0xc9C3Db1480eE9470181910BE5a55E6d52C3ab2EF",
+        "smartBalanceKeyValidator": "0xF12d77fBa4d3B6503Cfe9Be313718Bcae5e491eb",
+        "simpleSessionKeyValidator": "0xB01d59961E629e05c4d7112D2C94C431de5805ef"
+      },
+      "precompile": {
+        "p256Verifier": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
+      }
     },
     "10": {
       "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
@@ -36,12 +42,18 @@
       },
       "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
       "moduleManager": "0x63Bd90e23ECCd0ccc393CE59A7d34297886262Ff",
-      "accountModules": {
-        "p256Validator": "",
-        "smartBalanceKeyValidator": "",
-        "simpleSessionKeyValidator": ""
+      "accountFactories": {
+        "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
+        "smartAccountV1": ""
       },
-      "precompile": "0x0000000000000000000000000000000000000100"
+      "accountModules": {
+        "p256Validator": "0x152ACAC9406Aa29c30c50Cc95e68fB0e1F764cd2",
+        "smartBalanceKeyValidator": "0x23235683a76dF82A5E4f636b385De85122187d90",
+        "simpleSessionKeyValidator": "0xc9C3Db1480eE9470181910BE5a55E6d52C3ab2EF"
+      },
+      "precompile": {
+        "p256Verifier": "0x0000000000000000000000000000000000000100"
+      }
     },
     "8453": {
       "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
@@ -58,12 +70,18 @@
       },
       "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
       "moduleManager": "0x8Ac2c32C48782Fd156D884031F72e4226F89B0c4",
-      "accountModules": {
-        "p256Validator": "",
-        "smartBalanceKeyValidator": "",
-        "simpleSessionKeyValidator": ""
+      "accountFactories": {
+        "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
+        "smartAccountV1": ""
       },
-      "precompile": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
+      "accountModules": {
+        "p256Validator": "0xD8231688a8FC6cd5b8657bdC8f49B496bDBa341c",
+        "smartBalanceKeyValidator": "0xeB962BB04C07FC1f35f698555E29ae85a5c3f89F",
+        "simpleSessionKeyValidator": "0x23063882b2f93A549f0f00B4a1956E3c94B8eEEE"
+      },
+      "precompile": {
+        "p256Verifier": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
+      }
     }
   }
   

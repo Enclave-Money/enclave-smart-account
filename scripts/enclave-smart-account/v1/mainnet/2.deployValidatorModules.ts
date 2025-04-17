@@ -36,7 +36,7 @@ async function main() {
         const networkData = deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData];
         const moduleManagerAddress = networkData.moduleManager;
         const registryAddress = networkData.registry;
-        const p256PrecompileAddress = networkData.precompile;
+        const p256PrecompileAddress = networkData.precompile.p256Verifier;
 
         console.log(`Using ModuleManager at: ${moduleManagerAddress}`);
         console.log(`Using Registry at: ${registryAddress}`);
@@ -74,6 +74,8 @@ async function main() {
         };
         
         console.log(`Updated deployment data for network ${ACTIVE_SLUG}`);
+
+        console.log((deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData] as any).accountModules)
     }
     
     console.log("Deployment data updated successfully");

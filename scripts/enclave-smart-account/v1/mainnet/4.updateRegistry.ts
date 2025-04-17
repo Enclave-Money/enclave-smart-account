@@ -61,9 +61,9 @@ async function main() {
 
         // Update registry with smart balance conversion manager
         console.log("Setting smart balance conversion manager in registry...");
-        const tx1 = await registry.updateRegistryAddress(SMART_BALANCE_CONVERSION_MANAGER, deployer.address);
+        const tx1 = await registry.updateRegistryAddress(SMART_BALANCE_CONVERSION_MANAGER, wallet.address);
         await tx1.wait();
-        console.log(`Smart balance conversion manager set to: ${deployer.address}`);
+        console.log(`Smart balance conversion manager set to: ${wallet.address}`);
 
         // Update registry with entrypoint
         console.log("Setting entrypoint in registry...");

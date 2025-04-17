@@ -4,7 +4,7 @@ export const REGISTRY_KEYS = {
   ENTRY_POINT: "entryPoint",
   
   // Verification and validation
-  // P256_VERIFIER: "p256Verifier", // P256V
+  P256_VERIFIER: "p256Verifier", // P256V
   P256V: "P256V",
   P256_VALIDATOR: "P256Validator",
   MULTICHAIN_P256_VALIDATOR: "MultichainP256Validator",

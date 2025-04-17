@@ -18,8 +18,6 @@ for (const envVar of requiredEnvVars) {
     }
 }
 
-
-
 async function main() {
     const [deployer] = await ethers.getSigners();
 
