@@ -67,7 +67,7 @@ describe("P256SmartAccountCreate3Factory", function () {
       
       // Verify the account was created with the correct parameters
       const P256SmartAccountV1 = await ethers.getContractFactory("P256SmartAccountV1");
-      const account = P256SmartAccountV1.attach(predictedAddress);
+      const account: any = P256SmartAccountV1.attach(predictedAddress);
       
       expect(await account.pubKey(0)).to.equal(MOCK_PUBKEY[0]);
       expect(await account.pubKey(1)).to.equal(MOCK_PUBKEY[1]);
@@ -149,7 +149,7 @@ describe("P256SmartAccountCreate3Factory", function () {
         const accountAddress = events[i].args.smartAccount;
         expect(accountAddress).to.equal(predictedAddresses[i]);
         
-        const account = P256SmartAccountV1.attach(accountAddress);
+        const account: any = P256SmartAccountV1.attach(accountAddress);
         expect(await account.pubKey(0)).to.equal(pubKeys[i][0]);
         expect(await account.pubKey(1)).to.equal(pubKeys[i][1]);
         expect(await account.enclaveRegistry()).to.equal(registryAddress);
@@ -275,7 +275,7 @@ describe("P256SmartAccountCreate3Factory", function () {
       const originalImplementation = await proxyContract.implementation();
       
       // Create a call to the proxy from the account (since only the proxy itself can upgrade)
-      const account = P256SmartAccountV1.attach(accountAddress);
+      const account: any = P256SmartAccountV1.attach(accountAddress);
       const callData = proxyInterface.encodeFunctionData("upgradeTo", [await newImplementation.getAddress()]);
       await account.connect(owner).execute(accountAddress, 0, callData);
       
