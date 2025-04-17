@@ -12,7 +12,8 @@
           "FAST": "0xd5e829827F665c42326EAF68Da3360bd59b42f2f"
         }
       },
-      "moduleManager": "",
+      "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
+      "moduleManager": "0x23235683a76dF82A5E4f636b385De85122187d90",
       "accountModules": {
         "p256Validator": "",
         "smartBalanceKeyValidator": "",
@@ -32,7 +33,8 @@
           "FAST": "0x09A6e77912a6bcFc3abfDfb841A85380Bb2A8B97"
         }
       },
-      "moduleManager": "",
+      "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
+      "moduleManager": "0x63Bd90e23ECCd0ccc393CE59A7d34297886262Ff",
       "accountModules": {
         "p256Validator": "",
         "smartBalanceKeyValidator": "",
@@ -52,7 +54,8 @@
           "FAST": "0x957301825Dc21d4A92919C9E72dC9E6C6a29e7f8"
         }
       },
-      "moduleManager": "",
+      "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
+      "moduleManager": "0x8Ac2c32C48782Fd156D884031F72e4226F89B0c4",
       "accountModules": {
         "p256Validator": "",
         "smartBalanceKeyValidator": "",
