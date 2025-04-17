@@ -18,7 +18,8 @@
         "p256Validator": "",
         "smartBalanceKeyValidator": "",
         "simpleSessionKeyValidator": ""
-      }
+      },
+      "precompile": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
     },
     "10": {
       "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
@@ -39,7 +40,8 @@
         "p256Validator": "",
         "smartBalanceKeyValidator": "",
         "simpleSessionKeyValidator": ""
-      }
+      },
+      "precompile": "0x0000000000000000000000000000000000000100"
     },
     "8453": {
       "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
@@ -60,7 +62,8 @@
         "p256Validator": "",
         "smartBalanceKeyValidator": "",
         "simpleSessionKeyValidator": ""
-      }
+      },
+      "precompile": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
     }
   }
   
