@@ -13,12 +13,23 @@ import "@account-abstraction/contracts/core/BaseAccount.sol";
 import "@account-abstraction/contracts/core/Helpers.sol";
 import "@account-abstraction/contracts/samples/callback/TokenCallbackHandler.sol";
 
-import "../../enclave-smart-account/EnclaveRegistry.sol";
-import "../../enclave-smart-balance/interfaces/IEnclaveTokenVault.sol";
-
-import "../../enclave-smart-account/v1/EnclaveModuleManager.sol";
+import "../../EnclaveRegistryV0.sol";
+import "../EnclaveModuleManager.sol";
 
 import "hardhat/console.sol";
+
+bytes32 constant ENTRYPOINT = keccak256(abi.encodePacked("entryPoint"));
+bytes32 constant SMART_BALANCE_CONVERSION_MANAGER = keccak256(
+    abi.encodePacked("smartBalanceConversionManager")
+);
+bytes32 constant SMART_BALANCE_VAULT = keccak256(
+    abi.encodePacked("smartBalanceVault")
+);
+bytes32 constant MODULE_MANAGER = keccak256(abi.encodePacked("moduleManager"));
+
+interface IEnclaveVirtualLiquidityVault {
+    function deposit(address tokenAddress, uint256 amount) external payable;
+}
 
 /**
  * @dev ERC-7201 storage layout namespace
@@ -74,8 +85,8 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
 
     /// @inheritdoc BaseAccount
     function entryPoint() public view virtual override returns (IEntryPoint) {
-        address _entryPoint = EnclaveRegistry(enclaveRegistry())
-            .getRegistryAddress("entryPoint");
+        address _entryPoint = EnclaveRegistryV0(enclaveRegistry())
+            .getRegistryAddress(ENTRYPOINT);
         return IEntryPoint(_entryPoint);
     }
 
@@ -163,7 +174,7 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
 
         // Check if module is enabled
         require(
-            EnclaveModuleManager(EnclaveRegistry(enclaveRegistry()).getRegistryAddress("moduleManager")).isModuleEnabled(validator),
+            EnclaveModuleManager(EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(MODULE_MANAGER)).isModuleEnabled(validator),
             "Module validation failed"
         );
 
@@ -234,7 +245,7 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
     modifier onlySmartBalanceConversionManager() {
         require(
             msg.sender == address(this) ||
-            msg.sender == EnclaveRegistry(enclaveRegistry()).getRegistryAddress("smartBalanceConversionManager"),
+            msg.sender == EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(SMART_BALANCE_CONVERSION_MANAGER),
             "Convert: Invalid caller"
         );
         _;
@@ -244,7 +255,7 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
         require(smartBalanceEnabled(), "Convert: Smart balance not enabled");
 
         IERC20 smartBalanceToken = IERC20(tokenAddress);
-        IEnclaveTokenVaultV0 vault = IEnclaveTokenVaultV0(EnclaveRegistry(enclaveRegistry()).getRegistryAddress("smartBalanceVault"));
+        IEnclaveVirtualLiquidityVault vault = IEnclaveVirtualLiquidityVault(EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(SMART_BALANCE_VAULT));
         uint256 balance = smartBalanceToken.balanceOf(address(this));
 
         smartBalanceToken.approve(address(vault), balance);

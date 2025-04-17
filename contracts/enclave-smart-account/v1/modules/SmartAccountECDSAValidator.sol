@@ -7,7 +7,7 @@ import "@account-abstraction/contracts/core/Helpers.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "../SmartAccountV1.sol";
+import "../eoa-account/SmartAccountV1.sol";
 
 import "hardhat/console.sol";
 
