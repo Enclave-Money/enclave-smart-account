@@ -16,7 +16,16 @@ import "@account-abstraction/contracts/samples/callback/TokenCallbackHandler.sol
 import "../../EnclaveRegistryV0.sol";
 import "../EnclaveModuleManager.sol";
 
-import "hardhat/console.sol";
+// Custom errors
+error NotOwnerOrAccount();
+error NotOwnerOrEntryPoint();
+error NotOwnerOrGuardian();
+error ModuleValidationFailed();
+error InvalidArrayLengths();
+error ZeroAddressNotAllowed();
+error SmartBalanceDisabled();
+error NotAuthorizedCaller();
+error ExternalCallFailed();
 
 bytes32 constant ENTRYPOINT = keccak256(abi.encodePacked("entryPoint"));
 bytes32 constant SMART_BALANCE_CONVERSION_MANAGER = keccak256(
@@ -43,9 +52,16 @@ library SmartAccountV1Storage {
     }
 
     // keccak256(abi.encode(uint256(keccak256("enclave.storage.SmartAccountV1")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant STORAGE_SLOT = keccak256(abi.encode(uint256(keccak256("enclave.storage.SmartAccountV1")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant STORAGE_SLOT =
+        keccak256(
+            abi.encode(uint256(keccak256("enclave.storage.SmartAccountV1")) - 1)
+        ) & ~bytes32(uint256(0xff));
 
-    function smartAccountV1Layout() internal pure returns (SmartAccountV1Layout storage l) {
+    function smartAccountV1Layout()
+        internal
+        pure
+        returns (SmartAccountV1Layout storage l)
+    {
         bytes32 slot = STORAGE_SLOT;
         assembly {
             l.slot := slot
@@ -59,15 +75,42 @@ library SmartAccountV1Storage {
  *  has execute, eth handling methods
  *  has a single signer that can send requests through the entryPoint.
  */
-contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, Initializable {
+contract SmartAccountV1 is
+    BaseAccount,
+    TokenCallbackHandler,
+    UUPSUpgradeable,
+    Initializable
+{
     using ECDSA for bytes32;
 
-    event SmartAccountInitialized(address indexed owner);
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    event SmartBalanceStatusChanged(bool indexed enabled);
+    modifier _onlyOwner() {
+        if (msg.sender != owner() && msg.sender != address(this))
+            revert NotOwnerOrAccount();
+        _;
+    }
 
-    modifier onlyOwner() {
-        _onlyOwner();
+    modifier _onlySmartBalanceConversionManager() {
+        if (
+            msg.sender != address(this) &&
+            msg.sender !=
+            EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(
+                SMART_BALANCE_CONVERSION_MANAGER
+            )
+        ) revert NotAuthorizedCaller();
+        _;
+    }
+
+    // Require the function call went through EntryPoint or owner
+    modifier _requireFromEntryPointOrOwner() {
+        if (msg.sender != address(entryPoint()) && msg.sender != owner())
+            revert NotOwnerOrEntryPoint();
+        _;
+    }
+
+    // Require the function call went through Owner or guardian
+    modifier _requireFromOwnerOrGaurdian() {
+        if (msg.sender != owner() && msg.sender != address(this))
+            revert NotOwnerOrGuardian();
         _;
     }
 
@@ -97,19 +140,17 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
         _disableInitializers();
     }
 
-    function _onlyOwner() internal view {
-        //directly from EOA owner, or through the account itself (which gets redirected through execute())
-        require(msg.sender == owner() || msg.sender == address(this), "only owner");
-    }
-
     /**
      * execute a transaction (called directly from owner, or by entryPoint)
      * @param dest destination address to call
      * @param value the value to pass in this call
      * @param func the calldata to pass in this call
      */
-    function execute(address dest, uint256 value, bytes calldata func) external {
-        _requireFromEntryPointOrOwner();
+    function execute(
+        address dest,
+        uint256 value,
+        bytes calldata func
+    ) external _requireFromEntryPointOrOwner {
         _call(dest, value, func);
     }
 
@@ -120,15 +161,26 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
      * @param value an array of values to pass to each call. can be zero-length for no-value calls
      * @param func an array of calldata to pass to each call
      */
-    function executeBatch(address[] calldata dest, uint256[] calldata value, bytes[] calldata func) external {
-        _requireFromEntryPointOrOwner();
-        require(dest.length == func.length && (value.length == 0 || value.length == func.length), "wrong array lengths");
-        if (value.length == 0) {
-            for (uint256 i = 0; i < dest.length; i++) {
+    function executeBatch(
+        address[] calldata dest,
+        uint256[] calldata value,
+        bytes[] calldata func
+    ) external _requireFromEntryPointOrOwner {
+        uint256 destLength = dest.length;
+        uint256 valueLength = value.length;
+        uint256 funcLength = func.length;
+
+        if (
+            destLength != funcLength ||
+            (valueLength != 0 && valueLength != funcLength)
+        ) revert InvalidArrayLengths();
+
+        if (valueLength == 0) {
+            for (uint256 i = 0; i < destLength; i++) {
                 _call(dest[i], 0, func[i]);
             }
         } else {
-            for (uint256 i = 0; i < dest.length; i++) {
+            for (uint256 i = 0; i < destLength; i++) {
                 _call(dest[i], value[i], func[i]);
             }
         }
@@ -140,28 +192,22 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
      * the implementation by calling `upgradeTo()`
      * @param anOwner the owner (signer) of this account
      */
-    function initialize(address anOwner, address _enclaveRegistry) public virtual initializer {
+    function initialize(
+        address anOwner,
+        address _enclaveRegistry
+    ) public virtual initializer {
         _initialize(anOwner, _enclaveRegistry);
     }
 
-    function _initialize(address anOwner, address _enclaveRegistry) internal virtual {
+    function _initialize(
+        address anOwner,
+        address _enclaveRegistry
+    ) internal virtual {
         SmartAccountV1Storage.smartAccountV1Layout().owner = anOwner;
-        SmartAccountV1Storage.smartAccountV1Layout().enclaveRegistry = _enclaveRegistry;
+        SmartAccountV1Storage
+            .smartAccountV1Layout()
+            .enclaveRegistry = _enclaveRegistry;
         SmartAccountV1Storage.smartAccountV1Layout().smartBalanceEnabled = true;
-        emit SmartAccountInitialized(anOwner);
-    }
-
-    // Require the function call went through EntryPoint or owner
-    function _requireFromEntryPointOrOwner() internal view {
-        require(msg.sender == address(entryPoint()) || msg.sender == owner(), "account: not Owner or EntryPoint");
-    }
-
-    // Require the function call went through Owner or guardian
-    function _requireFromOwnerOrGaurdian() internal view {
-        require(
-            msg.sender == owner() || msg.sender == address(this),
-            "account: Not Owner ot guardian"
-        );
     }
 
     /// implement template method of BaseAccount
@@ -170,18 +216,24 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
         bytes32 userOpHash
     ) internal virtual override returns (uint256 validationData) {
         // Decode the validation mode and actual signature from userOp.signature
-        (address validator, bytes memory actualSignature) = abi.decode(userOp.signature, (address, bytes));
+        (address validator, bytes memory actualSignature) = abi.decode(
+            userOp.signature,
+            (address, bytes)
+        );
 
         // Check if module is enabled
-        require(
-            EnclaveModuleManager(EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(MODULE_MANAGER)).isModuleEnabled(validator),
-            "Module validation failed"
-        );
+        if (
+            !EnclaveModuleManager(
+                EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(
+                    MODULE_MANAGER
+                )
+            ).isModuleEnabled(validator)
+        ) revert ModuleValidationFailed();
 
         // Create modified UserOperation with actual signature
         UserOperation memory modifiedUserOp = userOp;
         modifiedUserOp.signature = actualSignature;
-    
+
         // Call the validator's validateUserOp function
         (bool success, bytes memory result) = validator.call(
             abi.encodeWithSignature(
@@ -190,12 +242,12 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
                 userOpHash
             )
         );
-        
+
         // If the call failed or returned invalid data, return validation failed
         if (!success || result.length != 32) {
             return SIG_VALIDATION_FAILED;
         }
-        
+
         // Return the validation result from the validator
         return abi.decode(result, (uint256));
     }
@@ -208,7 +260,7 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
             }
         }
     }
-    
+
     /**
      * check current account deposit in the entryPoint
      */
@@ -228,44 +280,44 @@ contract SmartAccountV1 is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, I
      * @param withdrawAddress target to send to
      * @param amount to withdraw
      */
-    function withdrawDepositTo(address payable withdrawAddress, uint256 amount) public onlyOwner {
+    function withdrawDepositTo(
+        address payable withdrawAddress,
+        uint256 amount
+    ) public _onlyOwner {
         entryPoint().withdrawTo(withdrawAddress, amount);
     }
 
-    function _authorizeUpgrade(address newImplementation) internal view override {
-        (newImplementation);
-        _onlyOwner();
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal view override _onlyOwner {}
+
+    function setSmartBalanceEnabled(
+        bool _smartBalanceEnabled
+    ) external _onlyOwner {
+        SmartAccountV1Storage
+            .smartAccountV1Layout()
+            .smartBalanceEnabled = _smartBalanceEnabled;
     }
 
-    function setSmartBalanceEnabled(bool _smartBalanceEnabled) external onlyOwner {
-        SmartAccountV1Storage.smartAccountV1Layout().smartBalanceEnabled = _smartBalanceEnabled;
-        emit SmartBalanceStatusChanged(_smartBalanceEnabled);
-    }
-
-    modifier onlySmartBalanceConversionManager() {
-        require(
-            msg.sender == address(this) ||
-            msg.sender == EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(SMART_BALANCE_CONVERSION_MANAGER),
-            "Convert: Invalid caller"
-        );
-        _;
-    }
-    
-    function smartBalanceConvert(address tokenAddress) external onlySmartBalanceConversionManager {
-        require(smartBalanceEnabled(), "Convert: Smart balance not enabled");
+    function smartBalanceConvert(
+        address tokenAddress
+    ) external _onlySmartBalanceConversionManager {
+        if (!smartBalanceEnabled()) revert SmartBalanceDisabled();
 
         IERC20 smartBalanceToken = IERC20(tokenAddress);
-        IEnclaveVirtualLiquidityVault vault = IEnclaveVirtualLiquidityVault(EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(SMART_BALANCE_VAULT));
+        IEnclaveVirtualLiquidityVault vault = IEnclaveVirtualLiquidityVault(
+            EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(
+                SMART_BALANCE_VAULT
+            )
+        );
         uint256 balance = smartBalanceToken.balanceOf(address(this));
 
         smartBalanceToken.approve(address(vault), balance);
         vault.deposit(tokenAddress, balance);
     }
 
-    function transferOwnership(address newOwner) external onlyOwner {
-        require(newOwner != address(0), "New owner is the zero address");
-        address oldOwner = owner();
+    function transferOwnership(address newOwner) external _onlyOwner {
+        if (newOwner == address(0)) revert ZeroAddressNotAllowed();
         SmartAccountV1Storage.smartAccountV1Layout().owner = newOwner;
-        emit OwnershipTransferred(oldOwner, newOwner);
     }
 }
