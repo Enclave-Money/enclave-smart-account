@@ -33,15 +33,6 @@ async function main() {
 
         console.log(`Deploying P256SmartAccountFactoryV1 with account: ${wallet.address} on network ${ACTIVE_SLUG}`);
 
-        const networkData = deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData];
-        const moduleManagerAddress = networkData.moduleManager;
-        const registryAddress = networkData.registry;
-        const p256ValidatorAddress = networkData.accountModules.p256Validator;
-
-        console.log(`Using ModuleManager at: ${moduleManagerAddress}`);
-        console.log(`Using Registry at: ${registryAddress}`);
-        console.log(`Using P256Validator at: ${p256ValidatorAddress}`);
-
         // Deploy P256SmartAccountFactoryV1
         const P256SmartAccountFactoryV1 = await ethers.getContractFactory("P256SmartAccountFactoryV1");
         const p256SmartAccountFactoryV1 = await P256SmartAccountFactoryV1.connect(wallet).deploy();
