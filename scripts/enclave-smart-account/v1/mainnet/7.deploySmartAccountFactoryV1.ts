@@ -40,7 +40,7 @@ async function main() {
         
         const accountFactoryAddress = await accountFactory.getAddress();
         console.log(`SmartAccountFactoryV1 deployed to: ${accountFactoryAddress}`);
-        
+       
         // Update deployment data with new address
         (deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData] as any).accountFactories.smartAccountFactoryV1 = accountFactoryAddress;
         

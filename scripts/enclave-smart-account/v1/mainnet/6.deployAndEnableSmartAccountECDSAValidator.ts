@@ -4,6 +4,7 @@ import {RPC} from "../../../../config/rpcNodes";
 import * as dotenv from 'dotenv';
 import { JsonRpcProvider } from "ethers";
 import deploymentData from "../../../../config/mainnetDeploymentContracts.json";
+import { EnclaveModuleManager } from "../../../../typechain-types";
 
 // Load environment variables
 const env = dotenv.config();
@@ -41,10 +42,36 @@ async function main() {
         const ecdsaValidatorAddress = await ecdsaValidator.getAddress();
         console.log(`SmartAccountECDSAValidator deployed to: ${ecdsaValidatorAddress}`);
         
+        // Update deployment data with new address
         (deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData] as any).accountModules.ecdsaValidator = ecdsaValidatorAddress;
         
         console.log(`Updated deployment data for network ${ACTIVE_SLUG}`);
         console.log((deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData] as any).accountModules);
+
+        console.log(`Enabling ECDSA validator module with account: ${wallet.address} on network ${ACTIVE_SLUG}`);
+
+        const networkData = deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData];
+        const moduleManagerAddress = networkData.moduleManager;
+
+        if (!moduleManagerAddress) {
+            console.log(`Missing ModuleManager address for network ${ACTIVE_SLUG}. Skipping enablement...`);
+            continue;
+        }
+
+        console.log(`Using ModuleManager at: ${moduleManagerAddress}`);
+        console.log(`SmartAccountECDSAValidator: ${ecdsaValidatorAddress}`);
+
+        // Get the module manager contract
+        const ModuleManager = await ethers.getContractFactory("EnclaveModuleManager");
+        const moduleManager = ModuleManager.attach(moduleManagerAddress).connect(wallet) as EnclaveModuleManager;
+
+        // Enable the ECDSA validator module in the module manager
+        console.log("Enabling SmartAccountECDSAValidator...");
+        const tx = await moduleManager.enableModule(ecdsaValidatorAddress);
+        await tx.wait();
+        console.log("SmartAccountECDSAValidator enabled successfully");
+
+        console.log(`ECDSA Validator module enabled for network ${ACTIVE_SLUG}`);
     }
     
     console.log("Deployment data updated successfully");
