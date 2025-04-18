@@ -26,6 +26,7 @@ error ZeroAddressNotAllowed();
 error SmartBalanceDisabled();
 error NotAuthorizedCaller();
 error ExternalCallFailed();
+error ZeroBalance();
 
 bytes32 constant ENTRYPOINT = keccak256(abi.encodePacked("entryPoint"));
 bytes32 constant SMART_BALANCE_CONVERSION_MANAGER = keccak256(
@@ -104,13 +105,6 @@ contract SmartAccountV1 is
     modifier _requireFromEntryPointOrOwner() {
         if (msg.sender != address(entryPoint()) && msg.sender != owner())
             revert NotOwnerOrEntryPoint();
-        _;
-    }
-
-    // Require the function call went through Owner or guardian
-    modifier _requireFromOwnerOrGaurdian() {
-        if (msg.sender != owner() && msg.sender != address(this))
-            revert NotOwnerOrGuardian();
         _;
     }
 
@@ -194,20 +188,22 @@ contract SmartAccountV1 is
      */
     function initialize(
         address anOwner,
-        address _enclaveRegistry
+        address _enclaveRegistry,
+        bool _smartBalanceEnabled
     ) public virtual initializer {
-        _initialize(anOwner, _enclaveRegistry);
+        _initialize(anOwner, _enclaveRegistry, _smartBalanceEnabled);
     }
 
     function _initialize(
         address anOwner,
-        address _enclaveRegistry
+        address _enclaveRegistry,
+        bool _smartBalanceEnabled
     ) internal virtual {
         SmartAccountV1Storage.smartAccountV1Layout().owner = anOwner;
         SmartAccountV1Storage
             .smartAccountV1Layout()
             .enclaveRegistry = _enclaveRegistry;
-        SmartAccountV1Storage.smartAccountV1Layout().smartBalanceEnabled = true;
+        SmartAccountV1Storage.smartAccountV1Layout().smartBalanceEnabled = _smartBalanceEnabled;
     }
 
     /// implement template method of BaseAccount
@@ -303,6 +299,7 @@ contract SmartAccountV1 is
         address tokenAddress
     ) external _onlySmartBalanceConversionManager {
         if (!smartBalanceEnabled()) revert SmartBalanceDisabled();
+        if (tokenAddress == address(0)) revert ZeroAddressNotAllowed();
 
         IERC20 smartBalanceToken = IERC20(tokenAddress);
         IEnclaveVirtualLiquidityVault vault = IEnclaveVirtualLiquidityVault(
@@ -311,6 +308,9 @@ contract SmartAccountV1 is
             )
         );
         uint256 balance = smartBalanceToken.balanceOf(address(this));
+        
+        // Check for zero balance
+        if (balance == 0) revert ZeroBalance();
 
         smartBalanceToken.approve(address(vault), balance);
         vault.deposit(tokenAddress, balance);

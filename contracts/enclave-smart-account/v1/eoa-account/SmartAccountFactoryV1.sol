@@ -27,11 +27,15 @@ contract SmartAccountFactoryV1 {
      * Note that during UserOperation execution, this method is called only if the account is not deployed.
      * This method returns an existing account address so that entryPoint.getSenderAddress() would work even after account creation
      */
-    function createAccount(address owner, address enclaveRegistry, uint256 salt)
-        public
-        returns (SmartAccountV1 ret)
-    {
-        address addr = getAccountAddress(owner, enclaveRegistry, salt);
+    function createAccount(
+        address owner,
+        address enclaveRegistry,
+        bool smartBalanceEnabled,
+        uint256 salt
+    ) public returns (SmartAccountV1 ret) {
+        if (owner == address(0) || enclaveRegistry == address(0)) revert ZeroAddressNotAllowed();
+        
+        address addr = getAccountAddress(owner, enclaveRegistry, smartBalanceEnabled, salt);
         uint256 codeSize = addr.code.length;
         if (codeSize > 0) {
             return SmartAccountV1(payable(addr));
@@ -40,7 +44,7 @@ contract SmartAccountFactoryV1 {
             payable(
                 new ERC1967Proxy{salt: bytes32(salt)}(
                     address(accountImplementation),
-                    abi.encodeCall(SmartAccountV1.initialize, (owner, enclaveRegistry))
+                    abi.encodeCall(SmartAccountV1.initialize, (owner, enclaveRegistry, smartBalanceEnabled))
                 )
             )
         );
@@ -51,7 +55,12 @@ contract SmartAccountFactoryV1 {
     /**
      * calculate the counterfactual address of this account as it would be returned by createAccount()
      */
-    function getAccountAddress(address owner, address enclaveRegistry, uint256 salt) public view returns (address) {
+    function getAccountAddress(
+        address owner,
+        address enclaveRegistry,
+        bool smartBalanceEnabled,
+        uint256 salt
+    ) public view returns (address) {
         return Create2.computeAddress(
             bytes32(salt),
             keccak256(
@@ -59,7 +68,7 @@ contract SmartAccountFactoryV1 {
                     type(ERC1967Proxy).creationCode,
                     abi.encode(
                         address(accountImplementation),
-                        abi.encodeCall(SmartAccountV1.initialize, (owner, enclaveRegistry))
+                        abi.encodeCall(SmartAccountV1.initialize, (owner, enclaveRegistry, smartBalanceEnabled))
                     )
                 )
             )
