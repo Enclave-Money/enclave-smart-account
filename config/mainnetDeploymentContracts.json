@@ -16,12 +16,13 @@
       "moduleManager": "0x23235683a76dF82A5E4f636b385De85122187d90",
       "accountFactories": {
         "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
-        "smartAccountV1": ""
+        "smartAccountV1": "0x63f2D501eB71ed88eCC3238189C31B9cc3742334"
       },
       "accountModules": {
         "p256Validator": "0xc9C3Db1480eE9470181910BE5a55E6d52C3ab2EF",
         "smartBalanceKeyValidator": "0xF12d77fBa4d3B6503Cfe9Be313718Bcae5e491eb",
-        "simpleSessionKeyValidator": "0xB01d59961E629e05c4d7112D2C94C431de5805ef"
+        "simpleSessionKeyValidator": "0xB01d59961E629e05c4d7112D2C94C431de5805ef",
+        "ecdsaValidator": "0xCC92e53Ac34724d8DFAF99BF8754D9e014A05F88"
       },
       "precompile": {
         "p256Verifier": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
@@ -44,12 +45,13 @@
       "moduleManager": "0x63Bd90e23ECCd0ccc393CE59A7d34297886262Ff",
       "accountFactories": {
         "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
-        "smartAccountV1": ""
+        "smartAccountV1": "0x63f2D501eB71ed88eCC3238189C31B9cc3742334"
       },
       "accountModules": {
         "p256Validator": "0x152ACAC9406Aa29c30c50Cc95e68fB0e1F764cd2",
         "smartBalanceKeyValidator": "0x23235683a76dF82A5E4f636b385De85122187d90",
-        "simpleSessionKeyValidator": "0xc9C3Db1480eE9470181910BE5a55E6d52C3ab2EF"
+        "simpleSessionKeyValidator": "0xc9C3Db1480eE9470181910BE5a55E6d52C3ab2EF",
+        "ecdsaValidator": "0xe21a41Cc5DA65929d02eee29299eE74fda636aDc"
       },
       "precompile": {
         "p256Verifier": "0x0000000000000000000000000000000000000100"
@@ -72,12 +74,13 @@
       "moduleManager": "0x8Ac2c32C48782Fd156D884031F72e4226F89B0c4",
       "accountFactories": {
         "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
-        "smartAccountV1": ""
+        "smartAccountV1": "0x63f2D501eB71ed88eCC3238189C31B9cc3742334"
       },
       "accountModules": {
         "p256Validator": "0xD8231688a8FC6cd5b8657bdC8f49B496bDBa341c",
         "smartBalanceKeyValidator": "0xeB962BB04C07FC1f35f698555E29ae85a5c3f89F",
-        "simpleSessionKeyValidator": "0x23063882b2f93A549f0f00B4a1956E3c94B8eEEE"
+        "simpleSessionKeyValidator": "0x23063882b2f93A549f0f00B4a1956E3c94B8eEEE",
+        "ecdsaValidator": "0x296A5e7DfF48959aea296BE21aB970C578c4304f"
       },
       "precompile": {
         "p256Verifier": "0xc2b78104907F722DABAc4C69f826a522B2754De4"

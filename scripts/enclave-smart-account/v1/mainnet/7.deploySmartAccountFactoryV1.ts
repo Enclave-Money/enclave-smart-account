@@ -12,7 +12,7 @@ if (env.error) {
 }
 
 // Validate required environment variables
-const requiredEnvVars = ['INFURA_API_KEY', 'PRIVATE_KEY_MASTER'];
+const requiredEnvVars = ['INFURA_API_KEY', 'SMART_ACCOUNT_DEPLOYMENT_KEY'];
 for (const envVar of requiredEnvVars) {
     if (!process.env[envVar]) {
         throw new Error(`Missing required environment variable: ${envVar}`);
@@ -25,11 +25,11 @@ async function main() {
     // Debug log for environment variables
     console.log('Environment variables loaded:');
     console.log('INFURA_API_KEY:', process.env.INFURA_API_KEY ?? 'Not set');
-    console.log('PRIVATE_KEY_MASTER:', process.env.PRIVATE_KEY_MASTER ?? 'Not set');
+    console.log('SMART_ACCOUNT_DEPLOYMENT_KEY:', process.env.SMART_ACCOUNT_DEPLOYMENT_KEY ?? 'Not set');
 
     for (let i = 0; i < mainnetSlugs.length; i++) {
         const ACTIVE_SLUG = mainnetSlugs[i];
-        const wallet = new ethers.Wallet(process.env.PRIVATE_KEY_MASTER as string, new JsonRpcProvider(RPC[ACTIVE_SLUG]));
+        const wallet = new ethers.Wallet(process.env.SMART_ACCOUNT_DEPLOYMENT_KEY as string, new JsonRpcProvider(RPC[ACTIVE_SLUG]));
 
         console.log(`Deploying SmartAccountFactoryV1 with account: ${wallet.address} on network ${ACTIVE_SLUG}`);
         
