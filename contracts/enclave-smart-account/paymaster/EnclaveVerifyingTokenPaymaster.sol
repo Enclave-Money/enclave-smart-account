@@ -8,10 +8,10 @@ import "@account-abstraction/contracts/core/BasePaymaster.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./IEnclaveFeeLogic.sol";
-import "hardhat/console.sol";
+import "./UniswapHelper.sol";
 
 /**
- * A sample paymaster that uses external service to decide whether to pay for the UserOp.
+ * A paymaster that uses external service to decide whether to pay for the UserOp.
  * The paymaster trusts an external signer to sign the transaction.
  * The calling user must pass the UserOp to that external signer first, which performs
  * whatever off-chain verification before signing the UserOp.
@@ -19,34 +19,65 @@ import "hardhat/console.sol";
  * - the paymaster checks a signature to agree to PAY for GAS.
  * - the account checks a signature to prove identity and account ownership.
  */
-
-contract EnclaveVerifyingTokenPaymaster is BasePaymaster {
+contract EnclaveVerifyingTokenPaymaster is BasePaymaster, UniswapHelper {
     using ECDSA for bytes32;
     using UserOperationLib for UserOperation;
 
     event FeeLogicUpdated(address indexed oldFeeLogic, address indexed newFeeLogic, uint256 timestamp);
     event PaymentTokenUpdated(address indexed oldPaymentToken, address indexed newPaymentToken, uint256 timestamp);
+    event SwapResult(bool success, string reason, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, uint256 amountOut, uint256 timestamp);
 
     address public immutable verifyingSigner;
 
     uint256 private constant VALID_TIMESTAMP_OFFSET = 20;
-
     uint256 private constant SIGNATURE_OFFSET = 84;
 
     ERC20 public paymentToken;
     IEnclaveFeeLogic public feeLogic;
 
-    constructor(IEntryPoint _entryPoint, address _verifyingSigner, address _paymentToken, address _feeLogicContract) BasePaymaster(_entryPoint) {
+    /**
+     * @param _entryPoint The EntryPoint contract used with this paymaster
+     * @param _verifyingSigner The trusted signer for paymaster operations
+     * @param _paymentToken ERC20 token used for transaction fee payment
+     * @param _feeLogicContract Contract that determines fee calculation logic
+     * @param _wrappedNative Wrapped native token (WETH) for swaps
+     * @param _uniswapRouter Uniswap router address for token swapping
+     */
+    constructor(
+        IEntryPoint _entryPoint, 
+        address _verifyingSigner, 
+        address _paymentToken, 
+        address _feeLogicContract, 
+        address _wrappedNative, 
+        address _uniswapRouter
+    ) BasePaymaster(_entryPoint) UniswapHelper(
+        IERC20(_paymentToken),
+        IERC20(_wrappedNative),
+        ISwapRouter(_uniswapRouter),
+        UniswapHelperConfig({
+            minSwapAmount: 0,
+            uniswapPoolFee: 3000, // 0.3% fee tier
+            slippage: 50 // 5.0% slippage
+        })
+    ) {
         verifyingSigner = _verifyingSigner;
         paymentToken = ERC20(_paymentToken);
         feeLogic = IEnclaveFeeLogic(_feeLogicContract);
     }
 
+    /**
+     * Update the fee logic contract
+     * @param _feeLogicContract Address of the new fee logic contract
+     */
     function updateFeeLogic(address _feeLogicContract) external onlyOwner {
         feeLogic = IEnclaveFeeLogic(_feeLogicContract);
         emit FeeLogicUpdated(address(feeLogic), _feeLogicContract, block.timestamp);
     }
 
+    /**
+     * Update the payment token
+     * @param _paymentToken Address of the new payment token
+     */
     function updatePaymentToken(address _paymentToken) external onlyOwner {
         paymentToken = ERC20(_paymentToken);
         emit PaymentTokenUpdated(address(paymentToken), _paymentToken, block.timestamp);
@@ -79,11 +110,13 @@ contract EnclaveVerifyingTokenPaymaster is BasePaymaster {
     }
 
     /**
-     * return the hash we're going to sign off-chain (and validate on-chain)
-     * this method is called by the off-chain service, to sign the request.
-     * it is called on-chain from the validatePaymasterUserOp, to validate the signature.
-     * note that this signature covers all fields of the UserOperation, except the "paymasterAndData",
-     * which will carry the signature itself.
+     * Return the hash we're going to sign off-chain (and validate on-chain)
+     * This method is called by the off-chain service to sign the request,
+     * and on-chain from validatePaymasterUserOp to validate the signature.
+     * @param userOp The user operation to be signed/verified
+     * @param validUntil The timestamp until which the signature is valid
+     * @param validAfter The timestamp after which the signature is valid
+     * @return The hash to be signed
      */
     function getHash(UserOperation calldata userOp, uint48 validUntil, uint48 validAfter)
         public
@@ -100,8 +133,8 @@ contract EnclaveVerifyingTokenPaymaster is BasePaymaster {
     }
 
     /**
-     * verify our external signer signed this request.
-     * the "paymasterAndData" is expected to be the paymaster and a signature over the entire request params
+     * Verify our external signer signed this request
+     * The "paymasterAndData" is expected to be the paymaster and a signature over the request params
      * paymasterAndData[:20] : address(this)
      * paymasterAndData[20:84] : abi.encode(validUntil, validAfter)
      * paymasterAndData[84:] : signature
@@ -134,6 +167,13 @@ contract EnclaveVerifyingTokenPaymaster is BasePaymaster {
         return (abi.encode(userOp.getSender()), _packValidationData(false, validUntil, validAfter));
     }
 
+    /**
+     * Parse the paymaster and data field into its components
+     * @param paymasterAndData The paymasterAndData field from UserOperation
+     * @return validUntil Timestamp until which the signature is valid
+     * @return validAfter Timestamp after which the signature is valid
+     * @return signature The signature itself
+     */
     function parsePaymasterAndData(bytes calldata paymasterAndData)
         public
         pure
@@ -145,24 +185,152 @@ contract EnclaveVerifyingTokenPaymaster is BasePaymaster {
     }
 
     /**
-     * actual charge of user.
-     * this method will be called just after the user's TX with mode==OpSucceeded|OpReverted (account pays in both cases)
-     * BUT: if the user changed its balance in a way that will cause  postOp to revert, then it gets called again, after reverting
-     * the user's TX , back to the state it was before the transaction started (before the validatePaymasterUserOp),
-     * and the transaction should succeed there.
+     * Charge the user for the transaction
+     * Called after the user's TX with mode==OpSucceeded|OpReverted
+     * If the user's TX causes postOp to revert, it gets called again after
+     * reverting the user's TX
      */
     function _postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost) internal override {
         //we don't really care about the mode, we just pay the gas with the user's tokens.
         (mode);
-        console.log("EnclaveVerifyingTokenPaymaster");
         address sender = abi.decode(context, (address));
-        uint256 charge = feeLogic.calculateFee(address(paymentToken) ,actualGasCost);
+        uint256 charge = feeLogic.calculateFee(address(paymentToken), actualGasCost);
         //actualGasCost is known to be no larger than the above requiredPreFund, so the transfer should succeed.
         require(paymentToken.transferFrom(sender, address(this), charge), "EnclaveVerifyingTokenPaymaster: transfer failed");
     }
 
-    function withdrawTokens(address _to, uint256 _amount) external {
+    /**
+     * Manually swap collected tokens for ETH
+     * This function can be called by the owner or verifying signer
+     * to convert accumulated tokens to ETH at an appropriate time
+     * @param amount Amount of tokens to swap
+     * @param slippage Slippage tolerance in 0.1% (e.g. 50 = 5.0%)
+     * @param minExpectedOutput Minimum amount of wrapped native tokens expected from swap
+     */
+    function swapTokenForETH(uint256 amount, uint8 slippage, uint256 minExpectedOutput) external {
         require(msg.sender == verifyingSigner, "Only verifying signer can withdraw");
-        require(paymentToken.transfer(_to, _amount), "EnclaveVerifyingTokenPaymaster: withdraw failed");
+        require(amount > 0, "Amount must be greater than 0");
+        require(slippage <= 100, "Slippage too high");
+        require(minExpectedOutput > 0, "Minimum expected output must be greater than 0");
+        require(paymentToken.balanceOf(address(this)) >= amount, "Insufficient token balance");
+
+        // Set the configuration for this swap
+        UniswapHelperConfig memory config = UniswapHelperConfig({
+            minSwapAmount: 0,
+            uniswapPoolFee: 3000, // 0.3% fee tier
+            slippage: slippage
+        });
+        _setUniswapHelperConfiguration(config);
+        
+        // Perform the swap
+        uint256 nativeReceived = swapToToken(
+            address(paymentToken),
+            address(wrappedNative),
+            amount,
+            minExpectedOutput,
+            config.uniswapPoolFee
+        );
+        
+        // Unwrap wrapped native token to native token if we received any
+        if (nativeReceived > 0) {
+            unwrapWeth(nativeReceived);
+            
+            // Emit success event with details
+            emit SwapResult(
+                true,
+                "",  // No error message on success
+                address(paymentToken),
+                address(wrappedNative),
+                amount,
+                minExpectedOutput,
+                nativeReceived,
+                block.timestamp
+            );
+        } else {
+            emit SwapResult(
+                false,
+                "Swap returned 0 tokens or failed",
+                address(paymentToken),
+                address(wrappedNative),
+                amount,
+                minExpectedOutput,
+                0,
+                block.timestamp
+            );
+            revert("Swap failed");
+        }
     }
+
+    /**
+     * Withdraw tokens from the contract
+     * @param token Address of the token to withdraw
+     * @param to Address to send the tokens to
+     * @param amount Amount of tokens to withdraw
+     */
+    function withdrawToken(address token, address to, uint256 amount) external {
+        require(msg.sender == verifyingSigner, "Only verifying signer can withdraw");
+        require(to != address(0), "Cannot withdraw to zero address");
+        require(amount > 0, "Amount must be greater than 0");
+        require(token != address(0), "Invalid token address");
+        
+        IERC20 tokenContract = IERC20(token);
+        require(tokenContract.balanceOf(address(this)) >= amount, "Insufficient token balance");
+        require(tokenContract.transfer(to, amount), "Token transfer failed");
+    }
+
+    /**
+     * Withdraw ETH from the contract
+     * @param to Address to send the ETH to
+     * @param amount Amount of ETH to withdraw
+     */
+    function withdrawETH(address payable to, uint256 amount) external {
+        require(msg.sender == verifyingSigner, "Only verifying signer can withdraw");
+        require(to != address(0), "Cannot withdraw to zero address");
+        require(amount > 0, "Amount must be greater than 0");
+        require(address(this).balance >= amount, "Insufficient ETH balance");
+        
+        (bool success, ) = to.call{value: amount}("");
+        require(success, "ETH transfer failed");
+    }
+
+    /**
+     * Overridden swapToToken function to capture swap failures
+     * @param tokenIn Address of input token
+     * @param tokenOut Address of output token
+     * @param amountIn Amount of input token to swap
+     * @param amountOutMin Minimum amount of output token to accept
+     * @param fee Uniswap pool fee tier
+     * @return amountOut Amount of output token received
+     */
+    function swapToToken(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        uint24 fee
+    ) internal override returns (uint256 amountOut) {
+        // Call the parent implementation
+        amountOut = super.swapToToken(tokenIn, tokenOut, amountIn, amountOutMin, fee);
+        
+        // If the swap failed, emit our custom event
+        if (amountOut == 0) {
+            emit SwapResult(
+                false,
+                "Uniswap swap failed",
+                tokenIn,
+                tokenOut,
+                amountIn,
+                amountOutMin,
+                0,
+                block.timestamp
+            );
+            // Explicitly revert on swap failure for better security
+            revert("Swap returned zero tokens");
+        }
+        
+        return amountOut;
+    }
+
+    // Allow contract to receive native token from unwrapping wrapped native token
+    receive() external payable {}
 }

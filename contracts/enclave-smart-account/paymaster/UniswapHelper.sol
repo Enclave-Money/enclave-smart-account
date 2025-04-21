@@ -90,7 +90,7 @@ abstract contract UniswapHelper {
         uint256 amountIn,
         uint256 amountOutMin,
         uint24 fee
-    ) internal returns (uint256 amountOut) {
+    ) internal virtual returns (uint256 amountOut) {
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams(
             tokenIn, //tokenIn
             tokenOut, //tokenOut
