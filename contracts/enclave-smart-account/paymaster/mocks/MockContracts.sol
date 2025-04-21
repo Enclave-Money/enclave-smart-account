@@ -193,8 +193,7 @@ contract MockTokenPaymasterAdapter {
         address _paymentToken,
         address _feeLogicContract,
         address _wrappedNative,
-        address _uniswapRouter,
-        uint256 _initialExchangeRate
+        address _uniswapRouter
     ) {
         paymaster = new MockEnclaveVerifyingTokenPaymaster(
             _entryPoint,
@@ -202,8 +201,7 @@ contract MockTokenPaymasterAdapter {
             _paymentToken,
             _feeLogicContract,
             _wrappedNative,
-            _uniswapRouter,
-            _initialExchangeRate
+            _uniswapRouter
         );
         
         // Set the paymaster to skip signature validation for testing
@@ -231,53 +229,14 @@ contract MockTokenPaymasterAdapter {
         return address(paymaster.feeLogic());
     }
     
-    function exchangeRate() external view returns (uint256) {
-        return paymaster.exchangeRate();
-    }
-    
-    function swapTokensToNative() external view returns (bool) {
-        return paymaster.swapTokensToNative();
-    }
-    
-    function swapSlippage() external view returns (uint8) {
-        return paymaster.swapSlippage();
-    }
-    
-    function lastRateUpdate() external view returns (uint256) {
-        return paymaster.lastRateUpdate();
-    }
-    
-    function maxRateAge() external view returns (uint256) {
-        return paymaster.maxRateAge();
-    }
-    
-    function isExchangeRateValid() external view returns (bool) {
-        return paymaster.isExchangeRateValid();
-    }
-    
     // Forward key functions
     function addStake(uint32 unstakeDelaySec) external payable {
         paymaster.addStake{value: msg.value}(unstakeDelaySec);
     }
     
     function withdrawTokens(address to, uint256 amount) external {
-        paymaster.withdrawTokens(to, amount);
-    }
-    
-    function updateExchangeRate(uint256 _newRate) external {
-        paymaster.updateExchangeRate(_newRate);
-    }
-    
-    function setSwapTokensToNative(bool _swapTokensToNative) external {
-        paymaster.setSwapTokensToNative(_swapTokensToNative);
-    }
-    
-    function setSwapSlippage(uint8 _swapSlippage) external {
-        paymaster.setSwapSlippage(_swapSlippage);
-    }
-    
-    function setMaxRateAge(uint256 _maxRateAge) external {
-        paymaster.setMaxRateAge(_maxRateAge);
+        address tokenAddress = address(paymaster.paymentToken());
+        paymaster.withdrawToken(tokenAddress, to, amount);
     }
     
     function updateFeeLogic(address _feeLogicContract) external {
@@ -370,16 +329,14 @@ contract MockEnclaveVerifyingTokenPaymaster is EnclaveVerifyingTokenPaymaster {
         address _paymentToken,
         address _feeLogicContract,
         address _wrappedNative,
-        address _uniswapRouter,
-        uint256 _initialExchangeRate
+        address _uniswapRouter
     ) EnclaveVerifyingTokenPaymaster(
         _entryPoint,
         _verifyingSigner,
         _paymentToken,
         _feeLogicContract,
         _wrappedNative,
-        _uniswapRouter,
-        _initialExchangeRate
+        _uniswapRouter
     ) {
         skipSignatureValidation = false;
     }
@@ -389,19 +346,13 @@ contract MockEnclaveVerifyingTokenPaymaster is EnclaveVerifyingTokenPaymaster {
     }
 
     // Overridden for testing
-    function updateExchangeRate(uint256 _newRate) external override {
-        require(_newRate > 0, "Exchange rate cannot be zero");
-        
-        // Update exchange rate and nonce
-        uint256 oldRate = exchangeRate;
-        exchangeRate = _newRate;
-        lastRateUpdate = block.timestamp;
-        
-        emit ExchangeRateUpdated(oldRate, _newRate, block.timestamp, block.timestamp - lastRateUpdate);
+    function updateExchangeRate(uint256 _newRate) external {
+        // This function is kept for test compatibility, but now it's a no-op since
+        // the main contract no longer has this function
     }
 
-    // Simplified for testing
-    function withdrawTokens(address _to, uint256 _amount) external override {
+    // Simplified for testing - no override keyword since this function doesn't exist in the parent contract
+    function withdrawTokens(address _to, uint256 _amount) external {
         if (!skipSignatureValidation) {
             require(msg.sender == verifyingSigner, "Only verifying signer can withdraw");
         }

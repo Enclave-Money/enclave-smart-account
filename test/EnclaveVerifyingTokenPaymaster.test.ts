@@ -27,7 +27,6 @@ describe("EnclaveVerifyingTokenPaymaster", function () {
   let beneficiaryAddress: string;
   
   // Constants
-  const INITIAL_EXCHANGE_RATE = ethers.parseUnits("1", 18); // 1:1 rate
   const DAY_IN_SECONDS = 86400;
   const HOUR_IN_SECONDS = 3600;
   const CHAIN_ID = 31337; // Hardhat's chain ID
@@ -83,16 +82,15 @@ describe("EnclaveVerifyingTokenPaymaster", function () {
     const MockEnclaveFeeLogic = await ethers.getContractFactory("MockEnclaveFeeLogic");
     feeLogic = await MockEnclaveFeeLogic.deploy();
 
-    // Deploy the paymaster adapter
-    const TokenPaymasterAdapter = await ethers.getContractFactory("MockTokenPaymasterAdapter");
-    tokenPaymaster = await TokenPaymasterAdapter.deploy(
+    // Deploy the paymaster
+    const TokenPaymaster = await ethers.getContractFactory("EnclaveVerifyingTokenPaymaster");
+    tokenPaymaster = await TokenPaymaster.deploy(
       await entryPoint.getAddress(),
       verifyingSignerAddress,
       await paymentToken.getAddress(),
       await feeLogic.getAddress(),
       await wrappedNative.getAddress(),
-      await uniswapRouter.getAddress(),
-      INITIAL_EXCHANGE_RATE
+      await uniswapRouter.getAddress()
     );
 
     // Fund accounts
@@ -113,127 +111,226 @@ describe("EnclaveVerifyingTokenPaymaster", function () {
       expect(await tokenPaymaster.verifyingSigner()).to.equal(verifyingSignerAddress);
       expect(await tokenPaymaster.paymentToken()).to.equal(await paymentToken.getAddress());
       expect(await tokenPaymaster.feeLogic()).to.equal(await feeLogic.getAddress());
-      expect(await tokenPaymaster.exchangeRate()).to.equal(INITIAL_EXCHANGE_RATE);
     });
 
-    it("should allow owner to update exchange rate", async function () {
-      const newRate = ethers.parseUnits("2", 18); // 2:1 rate
-      
-      // Store old rate to confirm update
-      const oldRate = await tokenPaymaster.exchangeRate();
-      
-      // Update rate (now only the owner can update it, no signature needed)
-      await tokenPaymaster.updateExchangeRate(newRate);
-      
-      expect(await tokenPaymaster.exchangeRate()).to.equal(newRate);
+    it("should allow owner to update fee logic", async function() {
+      const newFeeLogic = await (await ethers.getContractFactory("MockEnclaveFeeLogic")).deploy();
+      await tokenPaymaster.updateFeeLogic(await newFeeLogic.getAddress());
+      expect(await tokenPaymaster.feeLogic()).to.equal(await newFeeLogic.getAddress());
     });
 
-    it("should toggle swap tokens to native", async function() {
-      // Default is true
-      expect(await tokenPaymaster.swapTokensToNative()).to.be.true;
-      
-      // Instead of checking for event emission, just verify the state changes
-      await tokenPaymaster.setSwapTokensToNative(false);
-      expect(await tokenPaymaster.swapTokensToNative()).to.be.false;
-      
-      await tokenPaymaster.setSwapTokensToNative(true);
-      expect(await tokenPaymaster.swapTokensToNative()).to.be.true;
+    it("should allow owner to update payment token", async function() {
+      const newToken = await (await ethers.getContractFactory("MockERC20")).deploy("NewToken", "NT");
+      await tokenPaymaster.updatePaymentToken(await newToken.getAddress());
+      expect(await tokenPaymaster.paymentToken()).to.equal(await newToken.getAddress());
     });
 
     it("should allow verifying signer to withdraw tokens", async function() {
-      // Get the real paymaster address
-      const paymasterAddress = await tokenPaymaster.getPaymasterAddress();
-      
-      // Fund the real paymaster with tokens
-      await paymentToken.mint(paymasterAddress, ethers.parseEther("10"));
+      // Fund the paymaster with tokens
+      await paymentToken.mint(await tokenPaymaster.getAddress(), ethers.parseEther("10"));
       
       const amount = ethers.parseEther("5");
       const initialBalance = await paymentToken.balanceOf(verifyingSignerAddress);
       
-      await tokenPaymaster.connect(verifyingSigner).withdrawTokens(verifyingSignerAddress, amount);
+      await tokenPaymaster.connect(verifyingSigner).withdrawToken(await paymentToken.getAddress(), verifyingSignerAddress, amount);
       
       const finalBalance = await paymentToken.balanceOf(verifyingSignerAddress);
       expect(finalBalance - initialBalance).to.equal(amount);
     });
-
-    it("should emit appropriate SwapResult event", async function() {
-      // Instead of checking the event structure, verify the contract properties
-      expect(await tokenPaymaster.swapSlippage()).to.equal(50); // Default 5.0%
-      expect(await tokenPaymaster.swapTokensToNative()).to.be.true;
-    });
   });
 
-  describe("Exchange rate management", function () {
-    it("should reject expired exchange rates", async function() {
-      // Advance time beyond maxRateAge
-      await time.increase(DAY_IN_SECONDS + 1);
+  describe("Token swapping", function () {
+    it("should test ETH withdrawal", async function() {
+      // Send some ETH to the paymaster
+      await owner.sendTransaction({
+        to: await tokenPaymaster.getAddress(),
+        value: ethers.parseEther("1")
+      });
       
-      // Check if rate is valid
-      expect(await tokenPaymaster.isExchangeRateValid()).to.be.false;
+      const initialBalance = await ethers.provider.getBalance(verifyingSignerAddress);
+      const withdrawAmount = ethers.parseEther("0.5");
       
-      // Update with new rate (now only owner can do this, no signature needed)
-      const newRate = ethers.parseUnits("2", 18);
-      await tokenPaymaster.updateExchangeRate(newRate);
+      await tokenPaymaster.connect(verifyingSigner).withdrawETH(verifyingSignerAddress, withdrawAmount);
       
-      // Rate should be valid again
-      expect(await tokenPaymaster.isExchangeRateValid()).to.be.true;
+      const finalBalance = await ethers.provider.getBalance(verifyingSignerAddress);
+      // Account for gas costs by checking if the difference is close enough
+      expect(finalBalance > initialBalance).to.be.true;
     });
-
-    it("should allow owner to update max rate age", async function() {
-      const newMaxRateAge = 12 * HOUR_IN_SECONDS; // 12 hours
-      await tokenPaymaster.setMaxRateAge(newMaxRateAge);
-      expect(await tokenPaymaster.maxRateAge()).to.equal(newMaxRateAge);
+    
+    it("should swap tokens to ETH when called by verifying signer", async function() {
+      // Fund paymaster with tokens to swap
+      const swapAmount = ethers.parseEther("5");
+      await paymentToken.mint(await tokenPaymaster.getAddress(), swapAmount);
+      
+      // Initial ETH balance of the contract
+      const initialEthBalance = await ethers.provider.getBalance(await tokenPaymaster.getAddress());
+      
+      // Calculate min expected output (95% of swap amount as per default slippage)
+      const minExpectedOutput = ethers.parseEther("4.75"); // 5 ETH - 5% slippage
+      
+      // Use the verifying signer to perform the swap
+      await tokenPaymaster.connect(verifyingSigner).swapTokenForETH(
+        swapAmount, 
+        50, // 5.0% slippage
+        minExpectedOutput
+      );
+      
+      // Final ETH balance of the contract
+      const finalEthBalance = await ethers.provider.getBalance(await tokenPaymaster.getAddress());
+      
+      // Should have more ETH after the swap
+      expect(finalEthBalance > initialEthBalance).to.be.true;
     });
-  });
-
-  describe("Paymaster validation", function () {
-    it("should update exchange rate as the owner", async function() {
-      const newRate = ethers.parseUnits("2", 18);
+    
+    it("should revert when owner tries to call swapTokenForETH", async function() {
+      // Fund paymaster with tokens to swap
+      const swapAmount = ethers.parseEther("5");
+      await paymentToken.mint(await tokenPaymaster.getAddress(), swapAmount);
       
-      // Update rate (owner only now)
-      await tokenPaymaster.updateExchangeRate(newRate);
+      // Calculate min expected output (95% of swap amount as per default slippage)
+      const minExpectedOutput = ethers.parseEther("4.75"); // 5 ETH - 5% slippage
       
-      // Verify the rate was updated
-      expect(await tokenPaymaster.exchangeRate()).to.equal(newRate);
+      // Should revert when owner tries to call swapTokenForETH
+      await expect(
+        tokenPaymaster.connect(owner).swapTokenForETH(
+          swapAmount, 
+          50, // 5.0% slippage
+          minExpectedOutput
+        )
+      ).to.be.revertedWith("Only verifying signer can withdraw");
     });
-  });
-
-  describe("PostOp execution", function() {
-    it("should allow configuration of swap parameters", async function() {
-      const newSlippage = 30; // 3.0%
-      await tokenPaymaster.setSwapSlippage(newSlippage);
-      expect(await tokenPaymaster.swapSlippage()).to.equal(newSlippage);
+    
+    it("should validate swap parameters", async function() {
+      // Fund paymaster with tokens to swap
+      const swapAmount = ethers.parseEther("5");
+      await paymentToken.mint(await tokenPaymaster.getAddress(), swapAmount);
       
-      await tokenPaymaster.setSwapTokensToNative(false);
-      expect(await tokenPaymaster.swapTokensToNative()).to.be.false;
+      // Calculate min expected output
+      const minExpectedOutput = ethers.parseEther("4.75"); // 5 ETH - 5% slippage
       
-      await tokenPaymaster.setSwapTokensToNative(true);
-      expect(await tokenPaymaster.swapTokensToNative()).to.be.true;
+      // Should revert if amount is zero
+      await expect(
+        tokenPaymaster.connect(verifyingSigner).swapTokenForETH(
+          0, 
+          50,
+          minExpectedOutput
+        )
+      ).to.be.revertedWith("Amount must be greater than 0");
+      
+      // Should revert if slippage is too high
+      await expect(
+        tokenPaymaster.connect(verifyingSigner).swapTokenForETH(
+          swapAmount, 
+          101, // 10.1% slippage
+          minExpectedOutput
+        )
+      ).to.be.revertedWith("Slippage too high");
+      
+      // Should revert if minExpectedOutput is zero
+      await expect(
+        tokenPaymaster.connect(verifyingSigner).swapTokenForETH(
+          swapAmount, 
+          50,
+          0
+        )
+      ).to.be.revertedWith("Minimum expected output must be greater than 0");
     });
   });
 
   describe("Contract deployment", function() {
-    it("should deploy with the same constructor signature as the deployment scripts", async function() {
-      // This test validates that the constructor is compatible with deployment scripts
+    it("should deploy with the correct constructor parameters", async function() {
       const TokenPaymaster = await ethers.getContractFactory("EnclaveVerifyingTokenPaymaster");
       
-      // Four parameter version (matching the deployment script)
-      const simpleTokenPaymaster = await TokenPaymaster.deploy(
+      const newPaymaster = await TokenPaymaster.deploy(
         await entryPoint.getAddress(),
         verifyingSignerAddress,
         await paymentToken.getAddress(),
         await feeLogic.getAddress(),
         await wrappedNative.getAddress(),
-        await uniswapRouter.getAddress(),
-        INITIAL_EXCHANGE_RATE
+        await uniswapRouter.getAddress()
       );
       
-      await simpleTokenPaymaster.waitForDeployment();
+      await newPaymaster.waitForDeployment();
       
-      expect(await simpleTokenPaymaster.entryPoint()).to.equal(await entryPoint.getAddress());
-      expect(await simpleTokenPaymaster.verifyingSigner()).to.equal(verifyingSignerAddress);
-      expect(await simpleTokenPaymaster.paymentToken()).to.equal(await paymentToken.getAddress());
-      expect(await simpleTokenPaymaster.feeLogic()).to.equal(await feeLogic.getAddress());
+      expect(await newPaymaster.entryPoint()).to.equal(await entryPoint.getAddress());
+      expect(await newPaymaster.verifyingSigner()).to.equal(verifyingSignerAddress);
+      expect(await newPaymaster.paymentToken()).to.equal(await paymentToken.getAddress());
+      expect(await newPaymaster.feeLogic()).to.equal(await feeLogic.getAddress());
+    });
+  });
+  
+  describe("Security and validation", function() {
+    it("should validate token withdrawal parameters", async function() {
+      // Fund the paymaster with tokens
+      await paymentToken.mint(await tokenPaymaster.getAddress(), ethers.parseEther("10"));
+      
+      // Should revert if recipient is zero address
+      await expect(
+        tokenPaymaster.connect(verifyingSigner).withdrawToken(
+          await paymentToken.getAddress(),
+          ethers.ZeroAddress,
+          ethers.parseEther("1")
+        )
+      ).to.be.revertedWith("Cannot withdraw to zero address");
+      
+      // Should revert if token address is zero
+      await expect(
+        tokenPaymaster.connect(verifyingSigner).withdrawToken(
+          ethers.ZeroAddress,
+          verifyingSignerAddress,
+          ethers.parseEther("1")
+        )
+      ).to.be.revertedWith("Invalid token address");
+      
+      // Should revert if amount is zero
+      await expect(
+        tokenPaymaster.connect(verifyingSigner).withdrawToken(
+          await paymentToken.getAddress(),
+          verifyingSignerAddress,
+          0
+        )
+      ).to.be.revertedWith("Amount must be greater than 0");
+      
+      // Should revert if amount exceeds balance
+      await expect(
+        tokenPaymaster.connect(verifyingSigner).withdrawToken(
+          await paymentToken.getAddress(),
+          verifyingSignerAddress,
+          ethers.parseEther("11") // More than available
+        )
+      ).to.be.revertedWith("Insufficient token balance");
+    });
+    
+    it("should validate ETH withdrawal parameters", async function() {
+      // Send some ETH to the paymaster
+      await owner.sendTransaction({
+        to: await tokenPaymaster.getAddress(),
+        value: ethers.parseEther("1")
+      });
+      
+      // Should revert if recipient is zero address
+      await expect(
+        tokenPaymaster.connect(verifyingSigner).withdrawETH(
+          ethers.ZeroAddress,
+          ethers.parseEther("0.5")
+        )
+      ).to.be.revertedWith("Cannot withdraw to zero address");
+      
+      // Should revert if amount is zero
+      await expect(
+        tokenPaymaster.connect(verifyingSigner).withdrawETH(
+          verifyingSignerAddress,
+          0
+        )
+      ).to.be.revertedWith("Amount must be greater than 0");
+      
+      // Should revert if amount exceeds balance
+      await expect(
+        tokenPaymaster.connect(verifyingSigner).withdrawETH(
+          verifyingSignerAddress,
+          ethers.parseEther("2") // More than available
+        )
+      ).to.be.revertedWith("Insufficient ETH balance");
     });
   });
 });
