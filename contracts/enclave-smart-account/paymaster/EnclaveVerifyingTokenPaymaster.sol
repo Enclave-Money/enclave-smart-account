@@ -26,14 +26,17 @@ contract EnclaveVerifyingTokenPaymaster is BasePaymaster, UniswapHelper {
     event FeeLogicUpdated(address indexed oldFeeLogic, address indexed newFeeLogic, uint256 timestamp);
     event PaymentTokenUpdated(address indexed oldPaymentToken, address indexed newPaymentToken, uint256 timestamp);
     event SwapResult(bool success, string reason, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, uint256 amountOut, uint256 timestamp);
+    event VerifyingSignerUpdated(address indexed oldSigner, address indexed newSigner, uint256 timestamp);
 
-    address public immutable verifyingSigner;
-
+    address public verifyingSigner;
+    ERC20 public paymentToken;
+    IEnclaveFeeLogic public feeLogic;
+    
     uint256 private constant VALID_TIMESTAMP_OFFSET = 20;
     uint256 private constant SIGNATURE_OFFSET = 84;
 
-    ERC20 public paymentToken;
-    IEnclaveFeeLogic public feeLogic;
+    // Sender nonce tracking
+    mapping(address => uint256) public senderNonce;
 
     /**
      * @param _entryPoint The EntryPoint contract used with this paymaster
@@ -66,6 +69,15 @@ contract EnclaveVerifyingTokenPaymaster is BasePaymaster, UniswapHelper {
     }
 
     /**
+     * Update the verifying signer
+     * @param _verifyingSigner Address of the new verifying signer
+     */
+    function updateVerifyingSigner(address _verifyingSigner) external onlyOwner {        
+        verifyingSigner = _verifyingSigner;
+        emit VerifyingSignerUpdated(address(verifyingSigner), _verifyingSigner, block.timestamp);
+    }
+
+    /**
      * Update the fee logic contract
      * @param _feeLogicContract Address of the new fee logic contract
      */
@@ -82,8 +94,6 @@ contract EnclaveVerifyingTokenPaymaster is BasePaymaster, UniswapHelper {
         paymentToken = ERC20(_paymentToken);
         emit PaymentTokenUpdated(address(paymentToken), _paymentToken, block.timestamp);
     }
-
-    mapping(address => uint256) public senderNonce;
 
     function pack(UserOperation calldata userOp) internal pure returns (bytes memory ret) {
         address sender = userOp.sender;
@@ -124,7 +134,6 @@ contract EnclaveVerifyingTokenPaymaster is BasePaymaster, UniswapHelper {
         returns (bytes32)
     {
         //can't use userOp.hash(), since it contains also the paymasterAndData itself.
-
         return keccak256(
             abi.encode(
                 pack(userOp), block.chainid, address(this), senderNonce[userOp.getSender()], validUntil, validAfter
@@ -144,7 +153,6 @@ contract EnclaveVerifyingTokenPaymaster is BasePaymaster, UniswapHelper {
         override
         returns (bytes memory context, uint256 validationData)
     {
-        (requiredPreFund);
 
         (uint48 validUntil, uint48 validAfter, bytes calldata signature) =
             parsePaymasterAndData(userOp.paymasterAndData);
@@ -191,8 +199,6 @@ contract EnclaveVerifyingTokenPaymaster is BasePaymaster, UniswapHelper {
      * reverting the user's TX
      */
     function _postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost) internal override {
-        //we don't really care about the mode, we just pay the gas with the user's tokens.
-        (mode);
         address sender = abi.decode(context, (address));
         uint256 charge = feeLogic.calculateFee(address(paymentToken), actualGasCost);
         //actualGasCost is known to be no larger than the above requiredPreFund, so the transfer should succeed.
@@ -201,7 +207,7 @@ contract EnclaveVerifyingTokenPaymaster is BasePaymaster, UniswapHelper {
 
     /**
      * Manually swap collected tokens for ETH
-     * This function can be called by the owner or verifying signer
+     * This function can be called by the verifying signer
      * to convert accumulated tokens to ETH at an appropriate time
      * @param amount Amount of tokens to swap
      * @param slippage Slippage tolerance in 0.1% (e.g. 50 = 5.0%)
