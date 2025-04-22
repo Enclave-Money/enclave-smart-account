@@ -358,4 +358,9 @@ contract MockEnclaveVerifyingTokenPaymaster is EnclaveVerifyingTokenPaymaster {
         }
         require(paymentToken.transfer(_to, _amount), "EnclaveVerifyingTokenPaymaster: withdraw failed");
     }
+    
+    // Allow the mock to update the verifying signer without signature validation
+    function updateVerifyingSignerForTesting(address _newSigner) external {
+        verifyingSigner = _newSigner;
+    }
 } 

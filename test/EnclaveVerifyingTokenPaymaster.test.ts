@@ -125,6 +125,38 @@ describe("EnclaveVerifyingTokenPaymaster", function () {
       expect(await tokenPaymaster.paymentToken()).to.equal(await newToken.getAddress());
     });
 
+    it("should allow owner to update verifying signer", async function() {
+      const newSigner = ethers.Wallet.createRandom().connect(ethers.provider);
+      
+      // Fund the new signer to allow for transactions
+      await owner.sendTransaction({
+        to: await newSigner.getAddress(),
+        value: ethers.parseEther("1")
+      });
+      
+      // Set the new signer
+      await tokenPaymaster.connect(owner).updateVerifyingSigner(await newSigner.getAddress());
+      
+      // Verify it was updated
+      expect(await tokenPaymaster.verifyingSigner()).to.equal(await newSigner.getAddress());
+      
+      // Verify that the new signer can perform actions
+      await paymentToken.mint(await tokenPaymaster.getAddress(), ethers.parseEther("10"));
+      await tokenPaymaster.connect(newSigner).withdrawToken(
+        await paymentToken.getAddress(),
+        await newSigner.getAddress(),
+        ethers.parseEther("1")
+      );
+    });
+    
+    it("should prevent non-owner from updating verifying signer", async function() {
+      const randomWallet = ethers.Wallet.createRandom().connect(ethers.provider);
+      
+      await expect(
+        tokenPaymaster.connect(user).updateVerifyingSigner(randomWallet.address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
     it("should allow verifying signer to withdraw tokens", async function() {
       // Fund the paymaster with tokens
       await paymentToken.mint(await tokenPaymaster.getAddress(), ethers.parseEther("10"));
