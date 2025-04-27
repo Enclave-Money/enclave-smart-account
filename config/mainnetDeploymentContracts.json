@@ -22,7 +22,8 @@
         "p256Validator": "0xc9C3Db1480eE9470181910BE5a55E6d52C3ab2EF",
         "smartBalanceKeyValidator": "0xF12d77fBa4d3B6503Cfe9Be313718Bcae5e491eb",
         "simpleSessionKeyValidator": "0xB01d59961E629e05c4d7112D2C94C431de5805ef",
-        "ecdsaValidator": "0xCC92e53Ac34724d8DFAF99BF8754D9e014A05F88"
+        "ecdsaValidator": "0xCC92e53Ac34724d8DFAF99BF8754D9e014A05F88",
+        "multichainP256Validator": "0x421EC63dc2635897ccb4A51007aE7a386B36F0e1"
       },
       "precompile": {
         "p256Verifier": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
@@ -51,7 +52,8 @@
         "p256Validator": "0x152ACAC9406Aa29c30c50Cc95e68fB0e1F764cd2",
         "smartBalanceKeyValidator": "0x23235683a76dF82A5E4f636b385De85122187d90",
         "simpleSessionKeyValidator": "0xc9C3Db1480eE9470181910BE5a55E6d52C3ab2EF",
-        "ecdsaValidator": "0xe21a41Cc5DA65929d02eee29299eE74fda636aDc"
+        "ecdsaValidator": "0xe21a41Cc5DA65929d02eee29299eE74fda636aDc",
+        "multichainP256Validator": "0x8Ac2c32C48782Fd156D884031F72e4226F89B0c4"
       },
       "precompile": {
         "p256Verifier": "0x0000000000000000000000000000000000000100"
@@ -80,7 +82,8 @@
         "p256Validator": "0xD8231688a8FC6cd5b8657bdC8f49B496bDBa341c",
         "smartBalanceKeyValidator": "0xeB962BB04C07FC1f35f698555E29ae85a5c3f89F",
         "simpleSessionKeyValidator": "0x23063882b2f93A549f0f00B4a1956E3c94B8eEEE",
-        "ecdsaValidator": "0x296A5e7DfF48959aea296BE21aB970C578c4304f"
+        "ecdsaValidator": "0x296A5e7DfF48959aea296BE21aB970C578c4304f",
+        "multichainP256Validator": "0xb11BeC631Ab3ff39FFb998A465eaCeE52FD613fc"
       },
       "precompile": {
         "p256Verifier": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
