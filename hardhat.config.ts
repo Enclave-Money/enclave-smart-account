@@ -86,7 +86,7 @@ const config: HardhatUserConfig = {
       {
         version: "0.8.19",
         settings: {
-          optimizer: { enabled: true, runs: 100 },
+          optimizer: { enabled: true, runs: 200 },
           viaIR: true,
         },
       },
@@ -117,11 +117,8 @@ const config: HardhatUserConfig = {
       mining: {
         auto: true,
         interval: 0
-      }
-      // forking: {
-      //     url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`, // or use Alchemy
-      //     blockNumber: 21128662 // Optional: specify a block number to fork from
-      // }
+      },
+      chainId: 31337,
     },
     dev2: {url: "https://127.0.0.1:4200"},
     arbitrumSepolia: {
@@ -168,9 +165,9 @@ const config: HardhatUserConfig = {
     arbMaster: getNetworkMaster("https://arbitrum-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
     baseMaster: getNetworkMaster("https://1rpc.io/base"),
 
-    opRegDeployment: getNetworkReg("https://optimism-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
-    arbRegDeployment: getNetworkReg("https://arbitrum-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
-    baseRegDeployment: getNetworkReg("https://1rpc.io/base"),
+    // opRegDeployment: getNetworkReg("https://optimism-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    // arbRegDeployment: getNetworkReg("https://arbitrum-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY),
+    // baseRegDeployment: getNetworkReg("https://1rpc.io/base"),
   
     // bnbmain: getNetworkProd("https://bsc-mainnet.infura.io/v3/16fb3743839e4f80841b0401a68a020f"),  
     // scrollmain: {},
@@ -237,7 +234,10 @@ const config: HardhatUserConfig = {
         },
       },
     ],
-  }
+  },
+  paths: {
+    sources: "./contracts",
+  },
 };
 
 export default config;

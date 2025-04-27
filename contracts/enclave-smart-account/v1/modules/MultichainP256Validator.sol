@@ -87,7 +87,7 @@ contract MultichainP256Validator is IValidator {
             abi.encodePacked(validUntil, validAfter, userOpHash)
         );
 
-        if (!MerkleProof.verify(merkleProof, merkleTreeRoot, leaf))
+        if (!_verifyMerkleProof(merkleTreeRoot, merkleProof, leaf))
             revert InvalidUserOp();
 
         (
@@ -138,7 +138,7 @@ contract MultichainP256Validator is IValidator {
             abi.encodePacked(validUntil, validAfter, hash)
         );
 
-        if (!MerkleProof.verify(merkleProof, merkleTreeRoot, leaf))
+        if (!_verifyMerkleProof(merkleTreeRoot, merkleProof, leaf))
             return ERC1271_INVALID;
 
         (
@@ -193,6 +193,14 @@ contract MultichainP256Validator is IValidator {
                     P256SmartAccountV1(payable(msg.sender)).pubKey(1)
                 ]
             );
+    }
+
+    function _verifyMerkleProof(
+        bytes32 _merkleTreeRoot,
+        bytes32[] memory _merkleProof,
+        bytes32 _leaf
+    ) public pure returns (bool) {
+        return MerkleProof.verify(_merkleProof, _merkleTreeRoot, _leaf);
     }
 
     function verify(
