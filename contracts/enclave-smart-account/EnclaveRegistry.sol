@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 contract EnclaveRegistry {
+
     mapping(string => address) private registry;
     mapping(address => bool) public isManager;
 

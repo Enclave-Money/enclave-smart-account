@@ -12,6 +12,7 @@
           "FAST": "0xd5e829827F665c42326EAF68Da3360bd59b42f2f"
         }
       },
+<<<<<<< Updated upstream
       "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
       "moduleManager": "0x23235683a76dF82A5E4f636b385De85122187d90",
       "accountFactories": {
@@ -27,6 +28,13 @@
       "precompile": {
         "p256Verifier": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
       }
+=======
+      "validatorModules": {
+        "p256Validator": "",
+        "multichainP256Validator": ""
+      },
+      "p256v": "0xe4fc1002E56cf8deDCE7b69ba94c88a47feb6500"
+>>>>>>> Stashed changes
     },
     "10": {
       "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
@@ -41,6 +49,7 @@
           "FAST": "0x09A6e77912a6bcFc3abfDfb841A85380Bb2A8B97"
         }
       },
+<<<<<<< Updated upstream
       "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
       "moduleManager": "0x63Bd90e23ECCd0ccc393CE59A7d34297886262Ff",
       "accountFactories": {
@@ -56,6 +65,13 @@
       "precompile": {
         "p256Verifier": "0x0000000000000000000000000000000000000100"
       }
+=======
+      "validatorModules": {
+        "p256Validator": "",
+        "multichainP256Validator": ""
+      },
+      "p256v": "0x0056DEDa33aC4Fab7ADAD39A20c10196CeB5cd27"
+>>>>>>> Stashed changes
     },
     "8453": {
       "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
@@ -70,6 +86,7 @@
           "FAST": "0x957301825Dc21d4A92919C9E72dC9E6C6a29e7f8"
         }
       },
+<<<<<<< Updated upstream
       "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
       "moduleManager": "0x8Ac2c32C48782Fd156D884031F72e4226F89B0c4",
       "accountFactories": {
@@ -85,6 +102,13 @@
       "precompile": {
         "p256Verifier": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
       }
+=======
+      "validatorModules": {
+        "p256Validator": "",
+        "multichainP256Validator": ""
+      },
+      "p256v": "0xb885bf3Fe55c3070581203f0c600E03368597501"
+>>>>>>> Stashed changes
     }
   }
   
