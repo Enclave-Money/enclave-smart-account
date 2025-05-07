@@ -7,24 +7,17 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @title VaultLPManager
+ * @title VaultLPWithdrawalManager
  * @author Enclave HK Limited
- * @notice Contract for managing LP withdrawals and rebalancing across chains
+ * @notice Contract for managing LP withdrawals from the vault
  */
-contract VaultLPManager is EnclaveVaultManager {
+contract VaultLPWithdrawalManager is EnclaveVaultManager {
     using SafeERC20 for IERC20;
 
-    address public rebalancer;
     address public lpWithdrawService;
     EnclaveVirtualLiquidityVault public liquidityVault;
 
-    event Rebalanced(address indexed tokenAddress, uint256 amount, uint256 chainId, bytes bridgeData);
     event LPWithdrawal(address indexed lpAddress, address indexed tokenAddress, uint256 amount);
-
-    modifier onlyRebalancer() {
-        require(msg.sender == rebalancer, "Caller is not the rebalancer");
-        _;
-    }
 
     modifier onlyLPWithdrawService() {
         require(msg.sender == lpWithdrawService, "Caller is not the LP withdraw service");
@@ -35,32 +28,18 @@ contract VaultLPManager is EnclaveVaultManager {
      * @notice Constructor that initializes the contract with required addresses
      * @param _vaultManager Initial vault manager address
      * @param _liquidityVault Address of the EnclaveVirtualLiquidityVault contract
-     * @param _rebalancer Address authorized to perform rebalancing
      * @param _lpWithdrawService Address authorized to process LP withdrawals
      */
     constructor(
         address _vaultManager,
         address payable _liquidityVault,
-        address _rebalancer,
         address _lpWithdrawService
     ) EnclaveVaultManager(_vaultManager) {
         require(_liquidityVault != address(0), "Invalid liquidity vault address");
-        require(_rebalancer != address(0), "Invalid rebalancer address");
         require(_lpWithdrawService != address(0), "Invalid LP withdraw service address");
         
         liquidityVault = EnclaveVirtualLiquidityVault(_liquidityVault);
-        rebalancer = _rebalancer;
         lpWithdrawService = _lpWithdrawService;
-    }
-
-    /**
-     * @notice Updates the rebalancer address
-     * @param _newRebalancer New rebalancer address
-     * @dev Only callable by vault manager
-     */
-    function setRebalancer(address _newRebalancer) external onlyVaultManager {
-        require(_newRebalancer != address(0), "Invalid rebalancer address");
-        rebalancer = _newRebalancer;
     }
 
     /**
@@ -74,29 +53,13 @@ contract VaultLPManager is EnclaveVaultManager {
     }
 
     /**
-     * @notice Rebalances tokens by withdrawing from vault and preparing for cross-chain transfer
-     * @param _tokenAddress The token address to rebalance
-     * @param _amount Amount to withdraw
-     * @param _targetChainId Target chain ID for bridging
-     * @param _bridgeData Additional data needed for the bridge operation
-     * @dev Only callable by rebalancer
-     * @dev Withdraws tokens from vault and emits Rebalanced event
+     * @notice Sets a new liquidity vault address
+     * @param _newLiquidityVault New vault address
+     * @dev Only callable by vault manager
      */
-    function rebalanceToChain(
-        address _tokenAddress,
-        uint256 _amount,
-        uint256 _targetChainId,
-        bytes calldata _bridgeData
-    ) external onlyRebalancer {
-        // Call withdrawToken function on the liquidity vault
-        liquidityVault.withdrawToken(_tokenAddress, _amount);
-        
-        // Handle the withdrawn tokens (would typically involve bridge integration)
-        // For this implementation, we'll just emit an event
-        emit Rebalanced(_tokenAddress, _amount, _targetChainId, _bridgeData);
-        
-        // Future implementation would include bridge contract calls
-        // bridgeContract.bridgeTokens(_tokenAddress, _amount, _targetChainId, _bridgeData);
+    function setLiquidityVault(address payable _newLiquidityVault) external onlyVaultManager {
+        require(_newLiquidityVault != address(0), "Invalid liquidity vault address");
+        liquidityVault = EnclaveVirtualLiquidityVault(_newLiquidityVault);
     }
 
     /**
@@ -105,7 +68,7 @@ contract VaultLPManager is EnclaveVaultManager {
      * @param _tokenAddress The token address to withdraw
      * @param _amount Amount to withdraw
      * @dev Only callable by LP withdraw service
-     * @dev Withdraws tokens from vault and sends to LP address
+     * @dev Withdraws tokens directly from the liquidity vault and sends to LP address
      */
     function withdrawForLP(
         address _lpAddress,
@@ -114,7 +77,7 @@ contract VaultLPManager is EnclaveVaultManager {
     ) external onlyLPWithdrawService {
         require(_lpAddress != address(0), "Invalid LP address");
         
-        // Call withdrawToken function on the liquidity vault
+        // Call withdrawToken function directly on the liquidity vault
         liquidityVault.withdrawToken(_tokenAddress, _amount);
         
         // Transfer tokens to the LP
@@ -126,6 +89,56 @@ contract VaultLPManager is EnclaveVaultManager {
         }
         
         emit LPWithdrawal(_lpAddress, _tokenAddress, _amount);
+    }
+
+    /**
+     * @notice Batch withdraw for multiple LPs
+     * @param _lpAddresses Addresses of the LPs to receive tokens
+     * @param _tokenAddresses The token addresses to withdraw
+     * @param _amounts Amounts to withdraw
+     * @dev Only callable by LP withdraw service
+     * @dev All arrays must be the same length
+     */
+    function batchWithdrawForLPs(
+        address[] calldata _lpAddresses,
+        address[] calldata _tokenAddresses,
+        uint256[] calldata _amounts
+    ) external onlyLPWithdrawService {
+        require(
+            _lpAddresses.length == _tokenAddresses.length && 
+            _tokenAddresses.length == _amounts.length,
+            "Array lengths must match"
+        );
+        
+        for (uint256 i = 0; i < _lpAddresses.length; i++) {
+            address lpAddress = _lpAddresses[i];
+            address tokenAddress = _tokenAddresses[i];
+            uint256 amount = _amounts[i];
+            
+            require(lpAddress != address(0), "Invalid LP address");
+            
+            // Call withdrawToken function directly on the liquidity vault
+            liquidityVault.withdrawToken(tokenAddress, amount);
+            
+            // Transfer tokens to the LP
+            if (tokenAddress == liquidityVault.NATIVE_ADDRESS()) {
+                (bool success, ) = lpAddress.call{value: amount}("");
+                require(success, "Native token transfer failed");
+            } else {
+                IERC20(tokenAddress).safeTransfer(lpAddress, amount);
+            }
+            
+            emit LPWithdrawal(lpAddress, tokenAddress, amount);
+        }
+    }
+
+    /**
+     * @notice Retrieves the current vault liquidity for a given token
+     * @param _tokenAddress The token address to check
+     * @return The available liquidity amount
+     */
+    function getVaultLiquidity(address _tokenAddress) external view returns (uint256) {
+        return liquidityVault.getVaultLiquidity(_tokenAddress);
     }
 
     // Function to receive ETH
