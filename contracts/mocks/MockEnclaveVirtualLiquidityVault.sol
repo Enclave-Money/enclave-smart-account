@@ -85,17 +85,6 @@ contract MockEnclaveVirtualLiquidityVault {
         
         emit TokenWithdrawn(_tokenAddress, msg.sender, _amount);
     }
-    
-    /**
-     * @notice Mock implementation of deposit
-     * @param _tokenAddress The token address
-     * @param _amount The amount being deposited
-     * @dev This increases the tracked vault liquidity for testing purposes
-     */
-    function deposit(address _tokenAddress, uint256 _amount) external {
-        // Update the vault liquidity for this token
-        vaultLiquidity[_tokenAddress] += _amount;
-    }
 
     /**
      * @notice Allows the contract to receive native tokens

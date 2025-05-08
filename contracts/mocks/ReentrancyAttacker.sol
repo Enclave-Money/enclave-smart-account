@@ -2,21 +2,21 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../enclave-smart-balance/v1.1/EnclaveMultichainLPToken.sol";
+import "../enclave-smart-balance/v1.1/EnclaveMultichainLPTokenManager.sol";
 
 /**
  * @title ReentrancyAttacker
  * @notice A mock contract to test reentrancy protection in EnclaveMultichainLPToken
  */
 contract ReentrancyAttacker {
-    EnclaveMultichainLPToken public target;
+    EnclaveMultichainLPTokenManager public target;
     bool public attacking = false;
     bool public reentrancyAttempted = false;
 
     event ReentrancyAttempted();
 
     constructor(address _target) {
-        target = EnclaveMultichainLPToken(_target);
+        target = EnclaveMultichainLPTokenManager(_target);
     }
 
     // Function to approve tokens for withdrawal
