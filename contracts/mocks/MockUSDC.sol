@@ -2,46 +2,29 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title TestMockUSDC
- * @dev A simple mock USDC token for testing purposes
+ * @title MockUSDC
+ * @dev Mock USDC token for testing purposes
  */
-contract TestMockUSDC is ERC20, Ownable {
-    uint8 private _decimals;
+contract MockUSDC is ERC20 {
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) {
-        _decimals = 6; // USDC has 6 decimals
-    }
-    
     /**
-     * @dev See {ERC20-decimals}.
+     * @dev Mints tokens to an address
+     * @param to address The address that will receive the minted tokens
+     * @param amount uint256 The amount of tokens to mint
      */
-    function decimals() public view virtual override returns (uint8) {
-        return _decimals;
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
     }
 
     /**
-     * @dev Creates `amount` tokens and assigns them to `account`, increasing
-     * the total supply.
+     * @dev Burns tokens from an address
+     * @param from address The address from which tokens will be burned
+     * @param amount uint256 The amount of tokens to burn
      */
-    function mint(address account, uint256 amount) public {
-        _mint(account, amount);
-    }
-
-    /**
-     * @dev Destroys `amount` tokens from the caller.
-     */
-    function burn(uint256 amount) public {
-        _burn(_msgSender(), amount);
-    }
-
-    /**
-     * @dev Destroys `amount` tokens from `account`.
-     */
-    function burnFrom(address account, uint256 amount) public {
-        _spendAllowance(account, _msgSender(), amount);
-        _burn(account, amount);
+    function burn(address from, uint256 amount) external {
+        _burn(from, amount);
     }
 } 

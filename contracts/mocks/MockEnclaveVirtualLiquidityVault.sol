@@ -1,14 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 /**
  * @title MockEnclaveVirtualLiquidityVault
  * @notice Mock contract for testing various components that interact with the EnclaveVirtualLiquidityVault
  */
 contract MockEnclaveVirtualLiquidityVault {
+    using SafeERC20 for IERC20;
+
     address constant public NATIVE_ADDRESS = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
     bool public withdrawSuccess = true;
     mapping(address => uint256) public vaultLiquidity;
+    mapping(address => bool) public isVaultManager;
+
+    event TokenWithdrawn(address indexed tokenAddress, address indexed vaultManager, uint256 amount);
+
+    constructor() {
+        // Initialize the contract deployer as vault manager
+        isVaultManager[msg.sender] = true;
+    }
 
     /**
      * @notice Sets whether withdrawToken will succeed or fail
@@ -37,22 +50,40 @@ contract MockEnclaveVirtualLiquidityVault {
     }
 
     /**
+     * @notice Adds a new vault manager
+     * @param _vaultManager The address to add as vault manager
+     */
+    function addVaultManager(address _vaultManager) external {
+        isVaultManager[_vaultManager] = true;
+    }
+
+    /**
+     * @notice Removes a vault manager
+     * @param _vaultManager The address to remove from vault managers
+     */
+    function removeVaultManager(address _vaultManager) external {
+        isVaultManager[_vaultManager] = false;
+    }
+
+    /**
      * @notice Mock implementation of withdrawToken
      * @param _tokenAddress The token address
      * @param _amount The amount to withdraw
-     * @return Success indicator
      */
-    function withdrawToken(address _tokenAddress, uint256 _amount) external returns (bool) {
-        if (!withdrawSuccess) {
-            revert("Withdrawal failed");
-        }
+    function withdrawToken(address _tokenAddress, uint256 _amount) external {
+        require(withdrawSuccess, "Withdrawal failed");
+        require(vaultLiquidity[_tokenAddress] >= _amount, "Insufficient vault liquidity");
+        
+        vaultLiquidity[_tokenAddress] -= _amount;
         
         if (_tokenAddress == NATIVE_ADDRESS) {
             (bool success, ) = msg.sender.call{value: _amount}("");
-            return success;
+            require(success, "Native token transfer failed");
+        } else {
+            IERC20(_tokenAddress).safeTransfer(msg.sender, _amount);
         }
         
-        return true;
+        emit TokenWithdrawn(_tokenAddress, msg.sender, _amount);
     }
 
     /**

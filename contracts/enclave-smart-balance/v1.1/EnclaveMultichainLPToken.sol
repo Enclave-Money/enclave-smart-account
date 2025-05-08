@@ -111,7 +111,7 @@ contract EnclaveMultichainLPToken is Ownable, ReentrancyGuard {
         address _underlyingToken,
         uint256 _amount,
         uint256 _chainId
-    ) external onlyManager nonReentrant {
+    ) external onlyManager {
         require(_user != address(0), "Invalid user address");
         require(_underlyingToken != address(0), "Invalid token address");
         require(_amount > 0, "Amount must be greater than 0");
@@ -186,7 +186,7 @@ contract EnclaveMultichainLPToken is Ownable, ReentrancyGuard {
         address _underlyingToken,
         uint256 _lpAmount,
         uint256 _chainId
-    ) external nonReentrant {
+    ) external {
         require(_underlyingToken != address(0), "Invalid token address");
         require(_lpAmount > 0, "Amount must be greater than 0");
         require(supportedChains[_chainId], "Unsupported chain ID");
@@ -197,11 +197,11 @@ contract EnclaveMultichainLPToken is Ownable, ReentrancyGuard {
         // Calculate underlying token amount
         uint256 underlyingAmount = calculateUnderlyingAmount(_underlyingToken, _lpAmount);
         
-        // Burn LP tokens
-        EnclaveTokenLP(lpTokenAddress).burnFrom(msg.sender, _lpAmount);
-        
         // Update token supply
         totalUnderlyingSupply[_underlyingToken] -= underlyingAmount;
+        
+        // Burn LP tokens
+        EnclaveTokenLP(lpTokenAddress).burnFrom(msg.sender, _lpAmount);
         
         // Emit event for the LP withdraw service to process on the target chain
         emit WithdrawalRequested(_underlyingToken, underlyingAmount, msg.sender, _chainId);
