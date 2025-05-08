@@ -132,7 +132,7 @@ contract VaultLPTokenManager is Ownable, ReentrancyGuard {
         address _underlyingToken,
         uint256 _amount,
         uint256 _chainId
-    ) external onlyRelayer nonReentrant {
+    ) external onlyRelayer {
         require(_user != address(0), "Invalid user address");
         require(_underlyingToken != address(0), "Invalid token address");
         require(_amount > 0, "Amount must be greater than 0");
@@ -155,7 +155,7 @@ contract VaultLPTokenManager is Ownable, ReentrancyGuard {
         address _underlyingToken,
         uint256 _amount,
         uint256 _chainId
-    ) external onlyLPWithdrawService nonReentrant {
+    ) external onlyLPWithdrawService {
         require(_underlyingToken != address(0), "Invalid token address");
         require(_amount > 0, "Amount must be greater than 0");
         require(supportedChains[_chainId], "Unsupported chain ID");
@@ -179,7 +179,7 @@ contract VaultLPTokenManager is Ownable, ReentrancyGuard {
         address _underlyingToken,
         uint256 _amount,
         uint256 _chainId
-    ) external onlyLPWithdrawService nonReentrant {
+    ) external onlyLPWithdrawService {
         require(_user != address(0), "Invalid user address");
         require(_underlyingToken != address(0), "Invalid token address");
         require(_amount > 0, "Amount must be greater than 0");

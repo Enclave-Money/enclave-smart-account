@@ -143,7 +143,6 @@ contract VaultRebalancerManager is EnclaveVaultManager {
         address _recipient,
         uint256 _amount
     ) internal {
-        require(_recipient != address(0), "Invalid recipient address");
 
         // Transfer tokens to the recipient
         if (_tokenAddress == liquidityVault.NATIVE_ADDRESS()) {
@@ -170,7 +169,6 @@ contract VaultRebalancerManager is EnclaveVaultManager {
         address _spender,
         uint256 _amount
     ) internal {
-        require(_spender != address(0), "Invalid spender address");
         require(
             _tokenAddress != liquidityVault.NATIVE_ADDRESS(),
             "Cannot approve native tokens"

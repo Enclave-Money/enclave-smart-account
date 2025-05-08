@@ -3,10 +3,12 @@ pragma solidity ^0.8.0;
 
 /**
  * @title MockBridge
- * @notice Mock contract for testing bridge integration
+ * @notice Mock contract for testing bridge interactions in the VaultRebalancerManager
  */
 contract MockBridge {
     bool public bridgeSuccess = true;
+    uint256 public callCount = 0;
+    bytes public lastBridgeData;
     
     /**
      * @notice Sets whether bridge calls will succeed or fail
@@ -16,12 +18,19 @@ contract MockBridge {
         bridgeSuccess = _success;
     }
     
+    function getCallCount() external view returns (uint256) {
+        return callCount;
+    }
+    
     /**
      * @notice Mock function for bridging ERC20 tokens
-     * @param data Arbitrary calldata
+     * @param _data Arbitrary calldata
      * @return Success indicator
      */
-    function callBridge(bytes calldata data) external returns (bool) {
+    function callBridge(bytes calldata _data) external returns (bool) {
+        lastBridgeData = _data;
+        callCount++;
+        
         if (!bridgeSuccess) {
             revert("Bridge call failed");
         }
@@ -32,6 +41,8 @@ contract MockBridge {
      * @notice For receiving native tokens
      */
     receive() external payable {
+        callCount++;
+        
         if (!bridgeSuccess) {
             revert("Bridge call failed");
         }
@@ -41,6 +52,8 @@ contract MockBridge {
      * @notice Fallback function for arbitrary calls
      */
     fallback() external payable {
+        callCount++;
+        
         if (!bridgeSuccess) {
             revert("Bridge call failed");
         }
