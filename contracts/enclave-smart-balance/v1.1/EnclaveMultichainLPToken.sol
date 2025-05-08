@@ -18,12 +18,6 @@ contract EnclaveMultichainLPToken is Ownable, ReentrancyGuard {
     // Underlying token address => LP token address
     mapping(address => address) public lpTokens;
 
-    // Underlying token address => total supply across all chains
-    mapping(address => uint256) public totalUnderlyingSupply;
-
-    // Underlying token address => chain ID => amount
-    mapping(address => mapping(uint256 => uint256)) public chainBalances;
-
     // Chain ID => is supported
     mapping(uint256 => bool) public supportedChains;
 
@@ -35,8 +29,7 @@ contract EnclaveMultichainLPToken is Ownable, ReentrancyGuard {
         address indexed underlyingToken,
         uint256 amount,
         uint256 chainId,
-        address indexed user,
-        uint256 lpTokensMinted
+        address indexed user
     );
     event WithdrawalRequested(
         address indexed underlyingToken,
@@ -156,93 +149,24 @@ contract EnclaveMultichainLPToken is Ownable, ReentrancyGuard {
             "LP token not created for this underlying token"
         );
 
-        // Update chain balance and total supply
-        chainBalances[_underlyingToken][_chainId] += _amount;
-        totalUnderlyingSupply[_underlyingToken] += _amount;
-
-        // Calculate LP tokens to mint
-        uint256 lpTokensToMint = calculateLPTokenAmount(
-            _underlyingToken,
-            _amount
-        );
-
         // Mint LP tokens to user
-        EnclaveTokenLP(lpTokenAddress).mint(_user, lpTokensToMint);
+        EnclaveTokenLP(lpTokenAddress).mint(_user, _amount);
 
         emit TokensDeposited(
             _underlyingToken,
             _amount,
             _chainId,
-            _user,
-            lpTokensToMint
+            _user
         );
     }
 
     /**
-     * @notice Calculates the amount of LP tokens to mint based on underlying token amount
-     * @param _underlyingToken Address of the underlying token
-     * @param _amount Amount of underlying tokens
-     * @return lpAmount Amount of LP tokens to mint
-     */
-    function calculateLPTokenAmount(
-        address _underlyingToken,
-        uint256 _amount
-    ) public view returns (uint256 lpAmount) {
-        address lpTokenAddress = lpTokens[_underlyingToken];
-        require(
-            lpTokenAddress != address(0),
-            "LP token not created for this underlying token"
-        );
-
-        EnclaveTokenLP lpToken = EnclaveTokenLP(lpTokenAddress);
-        uint256 totalLPSupply = lpToken.totalSupply();
-
-        if (totalUnderlyingSupply[_underlyingToken] == 0) {
-            return _amount;
-        }
-        if (totalLPSupply == 0) {
-            return _amount;
-        }
-
-        // Calculate proportional share
-        return
-            (_amount * totalLPSupply) / totalUnderlyingSupply[_underlyingToken];
-    }
-
-    /**
-     * @notice Calculates the amount of underlying tokens to receive when burning LP tokens
-     * @param _underlyingToken Address of the underlying token
-     * @param _lpAmount Amount of LP tokens to burn
-     * @return tokenAmount Amount of underlying tokens to receive
-     */
-    function calculateUnderlyingAmount(
-        address _underlyingToken,
-        uint256 _lpAmount
-    ) public view returns (uint256 tokenAmount) {
-        address lpTokenAddress = lpTokens[_underlyingToken];
-        require(
-            lpTokenAddress != address(0),
-            "LP token not created for this underlying token"
-        );
-
-        EnclaveTokenLP lpToken = EnclaveTokenLP(lpTokenAddress);
-        uint256 totalLPSupply = lpToken.totalSupply();
-
-        require(totalLPSupply > 0, "No LP tokens in circulation");
-
-        // Calculate proportional share of the underlying assets
-        return
-            (_lpAmount * totalUnderlyingSupply[_underlyingToken]) /
-            totalLPSupply;
-    }
-
-    /**
-     * @notice Allows a user to request withdrawal of their underlying tokens
+     * @notice Allows an LP to request withdrawal of their underlying tokens
      * @param _underlyingToken Address of the underlying token
      * @param _lpAmount Amount of LP tokens to burn
      * @param _chainId Chain ID where withdrawal is requested
      * @dev Burns user's LP tokens and emits an event for the LP withdraw service
-     * @dev The actual withdrawal will be processed by the VaultLPManager on the target chain
+     * @dev The actual withdrawal will be processed by the EnclaveMultichainLPTokenManager on the target chain
      */
     function requestWithdrawal(
         address _underlyingToken,
@@ -259,50 +183,19 @@ contract EnclaveMultichainLPToken is Ownable, ReentrancyGuard {
             "LP token not created for this underlying token"
         );
 
-        // Calculate underlying token amount
-        uint256 underlyingAmount = calculateUnderlyingAmount(
-            _underlyingToken,
-            _lpAmount
-        );
-
-        // Update token supply
-        totalUnderlyingSupply[_underlyingToken] -= underlyingAmount;
-
         // Burn LP tokens
         EnclaveTokenLP(lpTokenAddress).burnFrom(msg.sender, _lpAmount);
 
         // Emit event for the LP withdraw service to process on the target chain
         emit WithdrawalRequested(
             _underlyingToken,
-            underlyingAmount,
+            _lpAmount,
             msg.sender,
             _chainId
         );
     }
-
-    /**
-     * @notice Updates the chain balance after processing withdrawals
-     * @param _underlyingToken Address of the underlying token
-     * @param _amount Amount withdrawn
-     * @param _chainId Chain ID where withdrawal occurred
-     * @dev Only callable by the manager
-     */
-    function recordWithdrawal(
-        address _underlyingToken,
-        uint256 _amount,
-        uint256 _chainId
-    ) external onlyManager {
-        require(_underlyingToken != address(0), "Invalid token address");
-        require(_amount > 0, "Amount must be greater than 0");
-        require(supportedChains[_chainId], "Unsupported chain ID");
-        require(
-            chainBalances[_underlyingToken][_chainId] >= _amount,
-            "Insufficient chain balance"
-        );
-
-        chainBalances[_underlyingToken][_chainId] -= _amount;
-    }
 }
+
 
 /**
  * @title EnclaveTokenLP

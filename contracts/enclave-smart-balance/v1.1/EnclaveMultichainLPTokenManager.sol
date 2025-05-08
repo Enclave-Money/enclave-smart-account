@@ -6,21 +6,19 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./EnclaveMultichainLPToken.sol";
 
 /**
- * @title VaultLPTokenManager
+ * @title EnclaveMultichainLPTokenManager
  * @author Enclave HK Limited
  * @notice Mediator contract between EnclaveMultichainLPToken and external services
  */
-contract VaultLPTokenManager is Ownable, ReentrancyGuard {
+contract EnclaveMultichainLPTokenManager is Ownable, ReentrancyGuard {
     EnclaveMultichainLPToken public lpTokenContract;
     
     address public relayer;
-    address public lpWithdrawService;
     
     // Chain ID => is supported
     mapping(uint256 => bool) public supportedChains;
     
     event RelayerSet(address indexed oldRelayer, address indexed newRelayer);
-    event LPWithdrawServiceSet(address indexed oldService, address indexed newService);
     event ChainSupported(uint256 chainId, bool isSupported);
     event DepositRelayed(address indexed user, address indexed underlyingToken, uint256 amount, uint256 chainId);
     event WithdrawalProcessed(address indexed user, address indexed underlyingToken, uint256 amount, uint256 chainId);
@@ -30,23 +28,15 @@ contract VaultLPTokenManager is Ownable, ReentrancyGuard {
         _;
     }
     
-    modifier onlyLPWithdrawService() {
-        require(msg.sender == lpWithdrawService, "Caller is not the LP withdraw service");
-        _;
-    }
-    
     constructor(
         address _lpTokenContract,
-        address _relayer,
-        address _lpWithdrawService
+        address _relayer
     ) {
         require(_lpTokenContract != address(0), "Invalid LP token contract address");
         require(_relayer != address(0), "Invalid relayer address");
-        require(_lpWithdrawService != address(0), "Invalid LP withdraw service address");
         
         lpTokenContract = EnclaveMultichainLPToken(_lpTokenContract);
         relayer = _relayer;
-        lpWithdrawService = _lpWithdrawService;
     }
     
     /**
@@ -69,18 +59,6 @@ contract VaultLPTokenManager is Ownable, ReentrancyGuard {
         address oldRelayer = relayer;
         relayer = _newRelayer;
         emit RelayerSet(oldRelayer, _newRelayer);
-    }
-    
-    /**
-     * @notice Updates the LP withdraw service address
-     * @param _newLPWithdrawService New LP withdraw service address
-     * @dev Only callable by the owner
-     */
-    function setLPWithdrawService(address _newLPWithdrawService) external onlyOwner {
-        require(_newLPWithdrawService != address(0), "Invalid LP withdraw service address");
-        address oldService = lpWithdrawService;
-        lpWithdrawService = _newLPWithdrawService;
-        emit LPWithdrawServiceSet(oldService, _newLPWithdrawService);
     }
     
     /**
@@ -120,7 +98,7 @@ contract VaultLPTokenManager is Ownable, ReentrancyGuard {
     }
     
     /**
-     * @notice Records a deposit from a user on a specific chain
+     * @notice Records a deposit from an LP on a specific chain
      * @param _user Address of the user who deposited
      * @param _underlyingToken Address of the deposited token
      * @param _amount Amount deposited
@@ -142,72 +120,5 @@ contract VaultLPTokenManager is Ownable, ReentrancyGuard {
         lpTokenContract.recordDeposit(_user, _underlyingToken, _amount, _chainId);
         
         emit DepositRelayed(_user, _underlyingToken, _amount, _chainId);
-    }
-    
-    /**
-     * @notice Records a withdrawal from a specific chain
-     * @param _underlyingToken Address of the underlying token
-     * @param _amount Amount withdrawn
-     * @param _chainId Chain ID where withdrawal occurred
-     * @dev Only callable by the LP withdraw service
-     */
-    function processWithdrawal(
-        address _underlyingToken,
-        uint256 _amount,
-        uint256 _chainId
-    ) external onlyLPWithdrawService {
-        require(_underlyingToken != address(0), "Invalid token address");
-        require(_amount > 0, "Amount must be greater than 0");
-        require(supportedChains[_chainId], "Unsupported chain ID");
-        
-        // Forward the call to the LP token contract
-        lpTokenContract.recordWithdrawal(_underlyingToken, _amount, _chainId);
-        
-        emit WithdrawalProcessed(address(0), _underlyingToken, _amount, _chainId);
-    }
-    
-    /**
-     * @notice Processes a user's withdrawal
-     * @param _user User who requested the withdrawal
-     * @param _underlyingToken Address of the withdrawn token
-     * @param _amount Amount withdrawn
-     * @param _chainId Chain ID where withdrawal occurred
-     * @dev Only callable by the LP withdraw service
-     */
-    function processUserWithdrawal(
-        address _user,
-        address _underlyingToken,
-        uint256 _amount,
-        uint256 _chainId
-    ) external onlyLPWithdrawService {
-        require(_user != address(0), "Invalid user address");
-        require(_underlyingToken != address(0), "Invalid token address");
-        require(_amount > 0, "Amount must be greater than 0");
-        require(supportedChains[_chainId], "Unsupported chain ID");
-        
-        // Forward the call to the LP token contract
-        lpTokenContract.recordWithdrawal(_underlyingToken, _amount, _chainId);
-        
-        emit WithdrawalProcessed(_user, _underlyingToken, _amount, _chainId);
-    }
-    
-    /**
-     * @notice View function to calculate the amount of LP tokens for a given underlying amount
-     * @param _underlyingToken Address of the underlying token
-     * @param _amount Amount of underlying tokens
-     * @return Amount of LP tokens
-     */
-    function calculateLPTokenAmount(address _underlyingToken, uint256 _amount) external view returns (uint256) {
-        return lpTokenContract.calculateLPTokenAmount(_underlyingToken, _amount);
-    }
-    
-    /**
-     * @notice View function to calculate the amount of underlying tokens for a given LP amount
-     * @param _underlyingToken Address of the underlying token
-     * @param _lpAmount Amount of LP tokens
-     * @return Amount of underlying tokens
-     */
-    function calculateUnderlyingAmount(address _underlyingToken, uint256 _lpAmount) external view returns (uint256) {
-        return lpTokenContract.calculateUnderlyingAmount(_underlyingToken, _lpAmount);
     }
 } 

@@ -7,17 +7,18 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @title VaultLPWithdrawalManager
+ * @title VaultLPManager
  * @author Enclave HK Limited
  * @notice Contract for managing LP withdrawals from the vault
  */
-contract VaultLPWithdrawalManager is EnclaveVaultManager {
+contract VaultLPManager is EnclaveVaultManager {
     using SafeERC20 for IERC20;
 
     address public lpWithdrawService;
     EnclaveVirtualLiquidityVault public liquidityVault;
 
     event LPWithdrawal(address indexed lpAddress, address indexed tokenAddress, uint256 amount);
+    event LPDepositInitiated(address indexed lpAddress, address indexed tokenAddress, uint256 chainId, uint256 amount);
 
     modifier onlyLPWithdrawService() {
         require(msg.sender == lpWithdrawService, "Caller is not the LP withdraw service");
@@ -60,6 +61,39 @@ contract VaultLPWithdrawalManager is EnclaveVaultManager {
     function setLiquidityVault(address payable _newLiquidityVault) external onlyVaultManager {
         require(_newLiquidityVault != address(0), "Invalid liquidity vault address");
         liquidityVault = EnclaveVirtualLiquidityVault(_newLiquidityVault);
+    }
+
+    /**
+     * @notice Deposits tokens from LP into the virtual liquidity vault
+     * @param _lpAddress Address of the LP providing tokens
+     * @param _tokenAddress The token address to deposit (use NATIVE_ADDRESS for native tokens)
+     * @param _amount Amount to deposit
+     * @param _chainId Chain ID where the deposit is credited
+     * @dev Callable by vault manager
+     * @dev Forwards the tokens to the liquidity vault
+     */
+    function depositForLP(
+        address _lpAddress,
+        address _tokenAddress,
+        uint256 _amount,
+        uint256 _chainId
+    ) external payable {
+        require(_lpAddress != address(0), "Invalid LP address");
+        require(_amount > 0, "Amount must be greater than 0");
+        
+        if (_tokenAddress == liquidityVault.NATIVE_ADDRESS()) {
+            require(msg.value == _amount, "Native token amount mismatch");
+            // Forward native token to vault
+            address(liquidityVault).call{value: _amount}("");
+        } else {
+            // Transfer ERC20 tokens from sender to this contract
+            IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), _amount);
+            // Approve and transfer to the liquidity vault
+            IERC20(_tokenAddress).safeApprove(address(liquidityVault), _amount);
+            IERC20(_tokenAddress).safeTransfer(address(liquidityVault), _amount);
+        }
+        
+        emit LPDepositInitiated(_lpAddress, _tokenAddress, _chainId, _amount);
     }
 
     /**
