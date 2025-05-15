@@ -320,4 +320,50 @@ contract SmartAccountV1 is
         if (newOwner == address(0)) revert ZeroAddressNotAllowed();
         SmartAccountV1Storage.smartAccountV1Layout().owner = newOwner;
     }
+
+    /**
+     * @dev ERC-1271 signature validation
+     * @param hash The hash of the data that is signed
+     * @param signature The signature data to validate
+     * @return The ERC-1271 magic value if the signature is valid, 0xffffffff otherwise
+     */
+    function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
+        // Try to decode the validator address and actual signature
+        try this.decodeSignature(signature) returns (address validator, bytes memory actualSignature) {
+            // Check if module is enabled
+            if (
+                !EnclaveModuleManager(
+                    EnclaveRegistryV0(enclaveRegistry()).getRegistryAddress(
+                        MODULE_MANAGER
+                    )
+                ).isModuleEnabled(validator)
+            ) return 0xffffffff;
+
+            // Call the validator's isValidSignatureWithSender function
+            (bool success, bytes memory result) = validator.staticcall(
+                abi.encodeWithSignature(
+                    "isValidSignatureWithSender(address,bytes32,bytes)",
+                    address(this),
+                    hash,
+                    actualSignature
+                )
+            );
+
+            // If the call failed or returned invalid data, return invalid signature
+            if (!success || result.length != 32) {
+                return 0xffffffff;
+            }
+
+            // Return the validation result from the validator
+            return abi.decode(result, (bytes4));
+        } catch {
+            // Return invalid signature for any decoding errors
+            return 0xffffffff;
+        }
+    }
+
+    // Helper function to decode signature data
+    function decodeSignature(bytes calldata signature) external pure returns (address validator, bytes memory actualSignature) {
+        return abi.decode(signature, (address, bytes));
+    }
 }

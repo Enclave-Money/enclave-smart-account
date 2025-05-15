@@ -701,6 +701,114 @@ describe("SmartAccountV1", function() {
     });
   });
 
+  describe("ERC1271 Signature Validation", function() {
+    it("Should validate a signature using enabled validator", async function() {
+      // Create a test message and hash
+      const message = "Test message";
+      const messageHash = ethers.keccak256(ethers.toUtf8Bytes(message));
+      
+      // Set the validator to return the ERC1271 magic value
+      await mockValidator.setERC1271Result("0x1626ba7e");
+      await mockValidator.setERC1271WillRevert(false);
+      await mockValidator.setERC1271ReturnsInvalid(false);
+      
+      // Create signature data (in this case, just mocked)
+      const signature = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address", "bytes"],
+        [mockValidator.target, "0x1234"] // Mock validator and signature
+      );
+      
+      // Call isValidSignature
+      const result = await smartAccount.isValidSignature(messageHash, signature);
+      
+      // Should return the magic value
+      expect(result).to.equal("0x1626ba7e");
+    });
+    
+    it("Should reject signature for disabled validators", async function() {
+      // Create a test message and hash
+      const message = "Test message";
+      const messageHash = ethers.keccak256(ethers.toUtf8Bytes(message));
+      
+      // Disable the validator
+      await moduleManager.disableModule(mockValidator.target);
+      
+      // Create signature data
+      const signature = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address", "bytes"],
+        [mockValidator.target, "0x1234"] // Disabled validator
+      );
+      
+      // Call isValidSignature
+      const result = await smartAccount.isValidSignature(messageHash, signature);
+      
+      // Should return invalid signature value
+      expect(result).to.equal("0xffffffff");
+      
+      // Re-enable for other tests
+      await moduleManager.enableModule(mockValidator.target);
+    });
+    
+    it("Should reject invalid signature data", async function() {
+      // Create a test message and hash
+      const message = "Test message";
+      const messageHash = ethers.keccak256(ethers.toUtf8Bytes(message));
+      
+      // Set the validator to return invalid signature
+      await mockValidator.setERC1271Result("0xffffffff");
+      await mockValidator.setERC1271WillRevert(false);
+      await mockValidator.setERC1271ReturnsInvalid(true);
+      
+      // Create signature data
+      const signature = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address", "bytes"],
+        [mockValidator.target, "0x1234"]
+      );
+      
+      // Call isValidSignature
+      const result = await smartAccount.isValidSignature(messageHash, signature);
+      
+      // Should return invalid signature value
+      expect(result).to.equal("0xffffffff");
+    });
+    
+    it("Should handle validator revert gracefully", async function() {
+      // Create a test message and hash
+      const message = "Test message";
+      const messageHash = ethers.keccak256(ethers.toUtf8Bytes(message));
+      
+      // Set the validator to revert
+      await mockValidator.setERC1271WillRevert(true);
+      
+      // Create signature data
+      const signature = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address", "bytes"],
+        [mockValidator.target, "0x1234"]
+      );
+      
+      // Call isValidSignature
+      const result = await smartAccount.isValidSignature(messageHash, signature);
+      
+      // Should return invalid signature value on revert
+      expect(result).to.equal("0xffffffff");
+    });
+    
+    it("Should handle malformed signature data", async function() {
+      // Create a test message and hash
+      const message = "Test message";
+      const messageHash = ethers.keccak256(ethers.toUtf8Bytes(message));
+      
+      // Create malformed signature data (not properly encoded)
+      const malformedSignature = "0x1234";
+      
+      // Call isValidSignature with malformed data
+      const result = await smartAccount.isValidSignature(messageHash, malformedSignature);
+      
+      // Should return invalid signature value
+      expect(result).to.equal("0xffffffff");
+    });
+  });
+
   describe("Registry Error Cases", function() {
     it("Should handle vault operations even when addresses are not set", async function() {
       // Save current vault address

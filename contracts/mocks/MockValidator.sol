@@ -20,12 +20,18 @@ contract MockValidator {
     bool public willRevert;
     bool public returnsInvalid;
     uint256 public validationResult;
+    bytes4 public erc1271Result;
+    bool public erc1271WillRevert;
+    bool public erc1271ReturnsInvalid;
     
     constructor() {
         // Initialize with default values
         willRevert = false;
         returnsInvalid = false;
         validationResult = 0; // 0 means success in validateUserOp
+        erc1271Result = 0x1626ba7e; // Default to valid signature
+        erc1271WillRevert = false;
+        erc1271ReturnsInvalid = false;
     }
     
     function setWillRevert(bool _willRevert) public {
@@ -38,6 +44,18 @@ contract MockValidator {
     
     function setValidationResult(uint256 _result) public {
         validationResult = _result;
+    }
+
+    function setERC1271Result(bytes4 _result) public {
+        erc1271Result = _result;
+    }
+
+    function setERC1271WillRevert(bool _willRevert) public {
+        erc1271WillRevert = _willRevert;
+    }
+
+    function setERC1271ReturnsInvalid(bool _returnsInvalid) public {
+        erc1271ReturnsInvalid = _returnsInvalid;
     }
     
     // This is called by the smart account to validate signatures
@@ -67,5 +85,22 @@ contract MockValidator {
         }
         
         return 0x1626ba7e; // Magic value for valid signature per ERC-1271
+    }
+
+    // Implementing isValidSignatureWithSender for ERC-1271 compatibility
+    function isValidSignatureWithSender(
+        address sender,
+        bytes32 hash,
+        bytes calldata signature
+    ) external view returns (bytes4) {
+        if (erc1271WillRevert) {
+            revert("MockValidator: ERC1271 forced revert");
+        }
+        
+        if (erc1271ReturnsInvalid) {
+            return 0xffffffff; // Invalid signature
+        }
+        
+        return erc1271Result;
     }
 } 

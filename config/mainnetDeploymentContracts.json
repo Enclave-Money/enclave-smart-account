@@ -16,7 +16,8 @@
       "moduleManager": "0x23235683a76dF82A5E4f636b385De85122187d90",
       "accountFactories": {
         "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
-        "smartAccountV1": "0x63f2D501eB71ed88eCC3238189C31B9cc3742334"
+        "smartAccountV1Depractaed": "0x63f2D501eB71ed88eCC3238189C31B9cc3742334",
+        "smartAccountV1": "0xcCEBf21B91D20387E2cf1E14d204a827b9d0D1FF"
       },
       "accountModules": {
         "p256Validator": "0xc9C3Db1480eE9470181910BE5a55E6d52C3ab2EF",
@@ -46,7 +47,8 @@
       "moduleManager": "0x63Bd90e23ECCd0ccc393CE59A7d34297886262Ff",
       "accountFactories": {
         "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
-        "smartAccountV1": "0x63f2D501eB71ed88eCC3238189C31B9cc3742334"
+        "smartAccountV1Depractaed": "0x63f2D501eB71ed88eCC3238189C31B9cc3742334",
+        "smartAccountV1": "0xcCEBf21B91D20387E2cf1E14d204a827b9d0D1FF"
       },
       "accountModules": {
         "p256Validator": "0x152ACAC9406Aa29c30c50Cc95e68fB0e1F764cd2",
@@ -76,7 +78,8 @@
       "moduleManager": "0x8Ac2c32C48782Fd156D884031F72e4226F89B0c4",
       "accountFactories": {
         "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
-        "smartAccountV1": "0x63f2D501eB71ed88eCC3238189C31B9cc3742334"
+        "smartAccountV1Depractaed": "0x63f2D501eB71ed88eCC3238189C31B9cc3742334",
+        "smartAccountV1": "0xcCEBf21B91D20387E2cf1E14d204a827b9d0D1FF"
       },
       "accountModules": {
         "p256Validator": "0xD8231688a8FC6cd5b8657bdC8f49B496bDBa341c",
