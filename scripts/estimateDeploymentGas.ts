@@ -10,54 +10,60 @@ interface NetworkConfig {
 }
 
 const networks: NetworkConfig[] = [
+  // {
+  //   name: "mainnet",
+  //   rpcUrl: "https://eth.llamarpc.com",
+  //   chainId: 1,
+  //   enabled: true
+  // },
+  // {
+  //   name: "unichain",
+  //   rpcUrl: "https://rpc.therpc.io/unichain",
+  //   chainId: 130,
+  //   enabled: true
+  // },
+  // {
+  //   name: "blast",
+  //   rpcUrl: "https://rpc.blast.io",
+  //   chainId: 81457,
+  //   enabled: true
+  // },
+  // {
+  //   name: "linea",
+  //   rpcUrl: "https://1rpc.io/linea",
+  //   chainId: 59144,
+  //   enabled: true
+  // },
+  // {
+  //   name: "scroll",
+  //   rpcUrl: "https://1rpc.io/scroll",
+  //   chainId: 534353,
+  //   enabled: true
+  // },
+  // {
+  //   name: "mode",
+  //   rpcUrl: "https://1rpc.io/mode",
+  //   chainId: 34443,
+  //   enabled: true
+  // },
+  // {
+  //   name: "ink",
+  //   rpcUrl: "https://rpc-qnd.inkonchain.com",
+  //   chainId: 57073,
+  //   enabled: true
+  // },
   {
-    name: "mainnet",
-    rpcUrl: "https://eth.llamarpc.com",
-    chainId: 1,
+    name: "worldchain",
+    rpcUrl: "https://worldchain-mainnet.g.alchemy.com/public",
+    chainId: 480,
     enabled: true
   },
-  {
-    name: "unichain",
-    rpcUrl: "https://unichain.api.onfinality.io/public",
-    chainId: 130,
-    enabled: true
-  },
-  {
-    name: "blast",
-    rpcUrl: "https://rpc.blast.io",
-    chainId: 81457,
-    enabled: true
-  },
-  {
-    name: "linea",
-    rpcUrl: "https://1rpc.io/linea",
-    chainId: 59144,
-    enabled: true
-  },
-  {
-    name: "scroll",
-    rpcUrl: "https://1rpc.io/scroll",
-    chainId: 534353,
-    enabled: true
-  },
-  {
-    name: "mode",
-    rpcUrl: "https://1rpc.io/mode",
-    chainId: 34443,
-    enabled: true
-  },
-  {
-    name: "ink",
-    rpcUrl: "https://rpc-qnd.inkonchain.com",
-    chainId: 57073,
-    enabled: true
-  },
-  {
-    name: "abstract",
-    rpcUrl: "https://abstract-sepolia.drpc.org",
-    chainId: 2741,
-    enabled: true
-  }
+  // {
+  //   name: "abstract",
+  //   rpcUrl: "https://api.mainnet.abs.xyz",
+  //   chainId: 2741,
+  //   enabled: true
+  // }
 ];
 
 // Filter enabled networks
@@ -72,14 +78,25 @@ async function estimateGasForContract(
 ): Promise<bigint> {
   try {
     const deployTx = await factory.getDeployTransaction(...args);
-    const gasEstimate = await provider.estimateGas(deployTx);
+    
+    // Use 5M gas limit as that's the maximum allowed by most nodes
+    const tx = {
+      ...deployTx,
+      gasLimit: 5_000_000n
+    };
+    
+    const gasEstimate = await provider.estimateGas(tx);
     // Calculate ETH cost
     const costInWei = gasEstimate * gasPrice;
     const costInEth = ethers.formatEther(costInWei);
     console.log(`${contractName}: ${gasEstimate.toString()} gas (≈ ${costInEth} ETH)`);
     return gasEstimate;
-  } catch (error) {
-    console.error(`Error estimating gas for ${contractName}:`, error);
+  } catch (error: any) {
+    if (typeof error === 'object' && error?.info?.error?.message?.includes('gas required exceeds')) {
+      console.error(`${contractName}: Contract deployment might require more gas than the block gas limit`);
+    } else {
+      console.error(`Error estimating gas for ${contractName}:`, error);
+    }
     return BigInt(0);
   }
 }
@@ -98,10 +115,11 @@ async function estimateGasForFunctionCall(
     // Create calldata for the function
     const data = contractInterface.encodeFunctionData(functionName, args);
     
-    // Create a transaction object
+    // Create a transaction object with 5M gas limit
     const tx = {
       to: contractAddress,
-      data
+      data,
+      gasLimit: 5_000_000n
     };
     
     // Estimate gas
@@ -115,8 +133,12 @@ async function estimateGasForFunctionCall(
       console.log(`${logPrefix}${functionName}: ${gasEstimate.toString()} gas (≈ ${costInEth} ETH)`);
     }
     return gasEstimate;
-  } catch (error) {
-    console.error(`Error estimating gas for function ${functionName}:`, error);
+  } catch (error: any) {
+    if (typeof error === 'object' && error?.info?.error?.message?.includes('gas required exceeds')) {
+      console.error(`${functionName}: Function call might require more gas than the block gas limit`);
+    } else {
+      console.error(`Error estimating gas for function ${functionName}:`, error);
+    }
     return BigInt(0);
   }
 }

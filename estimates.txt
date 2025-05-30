@@ -1,0 +1,56 @@
+
+
+Starting gas estimation for all networks...
+
+Estimating gas for worldchain...
+Current gas price: 0.001002424 Gwei
+
+Estimating deployment gas costs on worldchain...
+SmartAccountFactoryV1: 2482715 gas (≈ 0.00000248873310116 ETH)
+P256SmartAccountFactoryV1: 2232044 gas (≈ 0.000002237454474656 ETH)
+EnclaveRegistryV0: 294049 gas (≈ 0.000000294761774776 ETH)
+P256Validator: 813927 gas (≈ 0.000000815899959048 ETH)
+SmartAccountECDSAValidator: 493281 gas (≈ 0.000000494476713144 ETH)
+SmartBalanceKeyValidator: 881409 gas (≈ 0.000000883545535416 ETH)
+SimpleSessionKeyValidator: 687185 gas (≈ 0.00000068885073644 ETH)
+MultichainP256Validator: 957572 gas (≈ 0.000000959893154528 ETH)
+LimitOrderSessionValidator: 641847 gas (≈ 0.000000643402837128 ETH)
+EnclaveModuleManager: 339828 gas (≈ 0.000000340651743072 ETH)
+
+Estimating function call gas costs on worldchain...
+EnclaveRegistryV0.updateRegistryAddress: 21678 gas (≈ 0.000000021730547472 ETH)
+EnclaveRegistryV0.updateRegistryAddress (5 calls total): 108390 gas (≈ 0.00000010865273736 ETH)
+EnclaveModuleManager.enableModule: 21382 gas (≈ 0.000000021433829968 ETH)
+EnclaveModuleManager.enableModule (5 calls total): 106910 gas (≈ 0.00000010716914984 ETH)
+
+Gas Estimation Summary:
+======================
+
+WORLDCHAIN:
+Gas Price: 0.001002424 Gwei
+
+Contract Deployments:
+--------------------
+SmartAccountFactoryV1: 2482715 gas (≈ 0.00000248873310116 ETH)
+P256SmartAccountFactoryV1: 2232044 gas (≈ 0.000002237454474656 ETH)
+EnclaveRegistryV0: 294049 gas (≈ 0.000000294761774776 ETH)
+P256Validator: 813927 gas (≈ 0.000000815899959048 ETH)
+SmartAccountECDSAValidator: 493281 gas (≈ 0.000000494476713144 ETH)
+SmartBalanceKeyValidator: 881409 gas (≈ 0.000000883545535416 ETH)
+SimpleSessionKeyValidator: 687185 gas (≈ 0.00000068885073644 ETH)
+MultichainP256Validator: 957572 gas (≈ 0.000000959893154528 ETH)
+LimitOrderSessionValidator: 641847 gas (≈ 0.000000643402837128 ETH)
+EnclaveModuleManager: 339828 gas (≈ 0.000000340651743072 ETH)
+
+Total Deployment: 9823857 gas (≈ 0.000009847670029368 ETH)
+
+Function Calls:
+--------------
+EnclaveRegistryV0.updateRegistryAddress (single call): 21678 gas (≈ 0.000000021730547472 ETH)
+EnclaveRegistryV0.updateRegistryAddress (5 calls total): 108390 gas (≈ 0.00000010865273736 ETH)
+EnclaveModuleManager.enableModule (single call): 21382 gas (≈ 0.000000021433829968 ETH)
+EnclaveModuleManager.enableModule (5 calls total): 106910 gas (≈ 0.00000010716914984 ETH)
+
+Total Function Calls: 215300 gas (≈ 0.000000215821887200 ETH)
+
+GRAND TOTAL: 10039157 gas (≈ 0.000010063491916568 ETH)
