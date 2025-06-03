@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import {ARB_MAIN_SLUG, OP_MAIN_SLUG, BASE_MAIN_SLUG, mainnetSlugs} from "../../../../config/networks";
+import { mainnetSlugs} from "../../../../config/networks";
 import {RPC} from "../../../../config/rpcNodes";
 import * as dotenv from 'dotenv';
 import { JsonRpcProvider } from "ethers";
@@ -78,10 +78,10 @@ async function main() {
         console.log(`Module manager set to: ${networkData.moduleManager}`);
 
         // Update registry with smart balance vault
-        console.log("Setting smart balance vault in registry...");
-        const tx4 = await registry.updateRegistryAddress(SMART_BALANCE_VAULT, networkData.vault);
-        await tx4.wait();
-        console.log(`Smart balance vault set to: ${networkData.vault}`);           
+        // console.log("Setting smart balance vault in registry...");
+        // const tx4 = await registry.updateRegistryAddress(SMART_BALANCE_VAULT, networkData.vault);
+        // await tx4.wait();
+        // console.log(`Smart balance vault set to: ${networkData.vault}`);           
         
         console.log(`Registry updated for network ${ACTIVE_SLUG}`);
     }

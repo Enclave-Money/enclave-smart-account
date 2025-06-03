@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import {ARB_MAIN_SLUG, OP_MAIN_SLUG, BASE_MAIN_SLUG, mainnetSlugs} from "../../../../config/networks";
+import { mainnetSlugs} from "../../../../config/networks";
 import {RPC} from "../../../../config/rpcNodes";
 import * as dotenv from 'dotenv';
 import { JsonRpcProvider } from "ethers";
@@ -42,8 +42,10 @@ async function main() {
         const p256ValidatorAddress = networkData.accountModules.p256Validator;
         const smartBalanceKeyValidatorAddress = networkData.accountModules.smartBalanceKeyValidator;
         const simpleSessionKeyValidatorAddress = networkData.accountModules.simpleSessionKeyValidator;
+        const limitOrderSessionValidatorAddress = networkData.accountModules.limitOrderSessionValidator;
+        const ecdsaValidatorAddress = networkData.accountModules.ecdsaValidator;
         
-        if (!p256ValidatorAddress || !smartBalanceKeyValidatorAddress || !simpleSessionKeyValidatorAddress) {
+        if (!p256ValidatorAddress || !smartBalanceKeyValidatorAddress || !simpleSessionKeyValidatorAddress || !limitOrderSessionValidatorAddress || !ecdsaValidatorAddress) {
             console.log(`Missing module addresses for network ${ACTIVE_SLUG}. Skipping...`);
             continue;
         }
@@ -52,6 +54,8 @@ async function main() {
         console.log(`P256Validator: ${p256ValidatorAddress}`);
         console.log(`SmartBalanceKeyValidator: ${smartBalanceKeyValidatorAddress}`);
         console.log(`SimpleSessionKeyValidator: ${simpleSessionKeyValidatorAddress}`);
+        console.log(`LimitOrderSessionValidator: ${limitOrderSessionValidatorAddress}`);
+        console.log(`ECDSAValidator: ${ecdsaValidatorAddress}`);
 
         // Get the module manager contract
         const ModuleManager = await ethers.getContractFactory("EnclaveModuleManager");
@@ -72,6 +76,16 @@ async function main() {
         const tx3 = await moduleManager.enableModule(simpleSessionKeyValidatorAddress);
         await tx3.wait();
         console.log("SimpleSessionKeyValidator enabled successfully");
+
+        console.log("Enabling LimitOrderSessionValidator...");
+        const tx4 = await moduleManager.enableModule(limitOrderSessionValidatorAddress);
+        await tx4.wait();
+        console.log("LimitOrderSessionValidator enabled successfully");
+
+        console.log("Enabling ECDSAValidator...");
+        const tx5 = await moduleManager.enableModule(ecdsaValidatorAddress);
+        await tx5.wait();
+        console.log("ECDSAValidator enabled successfully");
 
         console.log(`All modules enabled for network ${ACTIVE_SLUG}`);
     }

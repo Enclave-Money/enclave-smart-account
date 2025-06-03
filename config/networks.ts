@@ -10,9 +10,19 @@ export const OP_MAIN_SLUG = 10;
 export const BASE_MAIN_SLUG = 8453;
 export const ARB_MAIN_SLUG = 42161;
 
+export const UNI_MAIN_SLUG = 130;
+
+export const BSC_MAIN_SLUG = 56;
+
+export const POLYGON_MAIN_SLUG = 137;
+
+export const AVAX_MAIN_SLUG = 43114;
+
+export const SONIC_MAIN_SLUG = 146;
+
 export const mainnetSlugs = [
-    // ETH_MAIN_SLUG,
-    OP_MAIN_SLUG,
-    BASE_MAIN_SLUG,
-    ARB_MAIN_SLUG
+    // BSC_MAIN_SLUG,
+    // AVAX_MAIN_SLUG,
+    POLYGON_MAIN_SLUG,
+    // SONIC_MAIN_SLUG
 ]

@@ -42,7 +42,7 @@ async function main() {
         await moduleManager.waitForDeployment();
         
         const moduleManagerAddress = await moduleManager.getAddress();
-        console.log("ModuleManager deployed to:", moduleManagerAddress);
+        console.log("ModuleManager deployed to:", moduleManagerAddress, "on network", ACTIVE_SLUG);
     }
 }
 

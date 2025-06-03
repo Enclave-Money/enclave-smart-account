@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import {ARB_MAIN_SLUG, OP_MAIN_SLUG, BASE_MAIN_SLUG, mainnetSlugs} from "../../../../config/networks";
+import {mainnetSlugs} from "../../../../config/networks";
 import {RPC} from "../../../../config/rpcNodes";
 import * as dotenv from 'dotenv';
 import { JsonRpcProvider } from "ethers";
@@ -65,17 +65,37 @@ async function main() {
         
         const simpleSessionKeyValidatorAddress = await simpleSessionKeyValidator.getAddress();
         console.log(`SimpleSessionKeyValidator deployed to: ${simpleSessionKeyValidatorAddress}`);
+
+        // Deploy LimitOrderSessionValidator
+        console.log(`\n📦 Deploying LimitOrderSessionValidator...`);
+        const LimitOrderSessionValidator = await ethers.getContractFactory("LimitOrderSessionValidator");
+        const limitOrderSessionValidator = await LimitOrderSessionValidator.connect(wallet).deploy(registryAddress);
+        await limitOrderSessionValidator.waitForDeployment();
+        
+        const limitOrderSessionValidatorAddress = await limitOrderSessionValidator.getAddress();
+        console.log(`LimitOrderSessionValidator deployed to: ${limitOrderSessionValidatorAddress}`);
+
+        // Deploy SmartAccountECDSAValidator
+        console.log(`\n📦 Deploying SmartAccountECDSAValidator...`);
+        const SmartAccountECDSAValidator = await ethers.getContractFactory("SmartAccountECDSAValidator");
+        const smartAccountECDSAValidator = await SmartAccountECDSAValidator.connect(wallet).deploy();
+        await smartAccountECDSAValidator.waitForDeployment();
+        
+        const smartAccountECDSAValidatorAddress = await smartAccountECDSAValidator.getAddress();
+        console.log(`SmartAccountECDSAValidator deployed to: ${smartAccountECDSAValidatorAddress}`);
         
         // Update deployment data with new addresses
         (deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData] as any).accountModules = {
             p256Validator: p256ValidatorAddress,
             smartBalanceKeyValidator: smartBalanceKeyValidatorAddress,
-            simpleSessionKeyValidator: simpleSessionKeyValidatorAddress
+            simpleSessionKeyValidator: simpleSessionKeyValidatorAddress,
+            limitOrderSessionValidator: limitOrderSessionValidatorAddress,
+            ecdsaValidator: smartAccountECDSAValidatorAddress
         };
         
         console.log(`Updated deployment data for network ${ACTIVE_SLUG}`);
 
-        console.log((deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData] as any).accountModules)
+        console.log(JSON.stringify((deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData] as any).accountModules, null, 2))
     }
     
     console.log("Deployment data updated successfully");

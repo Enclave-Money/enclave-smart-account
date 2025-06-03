@@ -1,4 +1,136 @@
 {
+    "1": {
+        "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+        "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
+        "moduleManager": "0x47D214Ad507882c69AaB80Bd29abC0b9EE7176aD",
+        "precompile": {
+            "p256Verifier": "0x67043Bd412E51c00Ad812ef2a35a3E2E41e3b606"
+        },
+        "accountModules": {
+          "p256Validator": "0x2a94358EBc9058364cE963DF227d33433232Fe0e",
+          "smartBalanceKeyValidator": "0xCe15acC5E924aee8FCEa638C3f301e6dc406bBF6",
+          "simpleSessionKeyValidator": "0x585Bb73705A8C409eecA43E1Cea69121E126Ba7C",
+          "limitOrderSessionValidator": "0xdA4cc603a2C2A8877Dc2EDf898bC04d2787420eA",
+          "ecdsaValidator": "0x75318c8C01104bA7D3f3C569cF392b26AE0123B0"
+        },
+        "accountFactories": {
+          "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
+          "smartAccountV1": "0xcCEBf21B91D20387E2cf1E14d204a827b9d0D1FF"
+        },
+        "paymasters": {
+          "enclaveVerifyingPaymaster": "0x152ACAC9406Aa29c30c50Cc95e68fB0e1F764cd2"
+        }
+    },
+    "56": {
+      "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+      "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
+      "moduleManager": "0x667FfEdcEF50F2B6aF3F01B1D945A2cC21893b4C",
+      "precompile": {
+        "p256Verifier": "0x28DD540ce3041F85EE3B639C63A33aE672F05FD3"
+      },
+      "accountModules": {
+        "p256Validator": "0x41cc0EFf454D5d0476e8510E4d932392907c1d2F",
+        "smartBalanceKeyValidator": "0x63Bd90e23ECCd0ccc393CE59A7d34297886262Ff",
+        "simpleSessionKeyValidator": "0x152ACAC9406Aa29c30c50Cc95e68fB0e1F764cd2",
+        "limitOrderSessionValidator": "0x23235683a76dF82A5E4f636b385De85122187d90",
+        "ecdsaValidator": "0xc9C3Db1480eE9470181910BE5a55E6d52C3ab2EF"
+      },
+      "accountFactories": {
+          "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
+          "smartAccountV1": "0xcCEBf21B91D20387E2cf1E14d204a827b9d0D1FF"
+      },
+      "paymasters": {
+        "enclaveVerifyingPaymaster": "0x1E345b92E8BD40365D3326BFD25647385E0Ed72b"
+      }
+    },
+    "43114": {
+      "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+      "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
+      "moduleManager": "0xdA4cc603a2C2A8877Dc2EDf898bC04d2787420eA",
+      "precompile": {
+        "p256Verifier": "0x585Bb73705A8C409eecA43E1Cea69121E126Ba7C"
+      },
+      "accountModules": {
+        "p256Validator": "0x75318c8C01104bA7D3f3C569cF392b26AE0123B0",
+        "smartBalanceKeyValidator": "0x182B5f9E9FDc2d21De9b444A97742174E6BDBDc2",
+        "simpleSessionKeyValidator": "0x59319891AEdA1Bd9786a6a62bAb96b4252118952",
+        "limitOrderSessionValidator": "0x9C56c8390E4EF6dcf2b872D1730E9B8a4b789ce0",
+        "ecdsaValidator": "0x8f69fED2806C8Fc688511c34d02379915f2884f7"
+      },
+      "accountFactories": {
+          "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
+          "smartAccountV1": "0xcCEBf21B91D20387E2cf1E14d204a827b9d0D1FF"
+      },
+      "paymasters": {
+        "enclaveVerifyingPaymaster": "0xB01d59961E629e05c4d7112D2C94C431de5805ef"
+      }
+    },
+    "137": {
+      "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+      "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
+      "moduleManager": "0xdA4cc603a2C2A8877Dc2EDf898bC04d2787420eA",
+      "precompile": {
+        "p256Verifier": "0x585Bb73705A8C409eecA43E1Cea69121E126Ba7C"
+      },
+      "accountModules": {
+        "p256Validator": "0x75318c8C01104bA7D3f3C569cF392b26AE0123B0",
+        "smartBalanceKeyValidator": "0x182B5f9E9FDc2d21De9b444A97742174E6BDBDc2",
+        "simpleSessionKeyValidator": "0x59319891AEdA1Bd9786a6a62bAb96b4252118952",
+        "limitOrderSessionValidator": "0x9C56c8390E4EF6dcf2b872D1730E9B8a4b789ce0",
+        "ecdsaValidator": "0x8f69fED2806C8Fc688511c34d02379915f2884f7"
+      },
+      "accountFactories": {
+          "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
+          "smartAccountV1": "0xcCEBf21B91D20387E2cf1E14d204a827b9d0D1FF"
+      },
+      "paymasters": {
+        "enclaveVerifyingPaymaster": "0xB01d59961E629e05c4d7112D2C94C431de5805ef"
+      }
+    },
+    "146": {
+      "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+      "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
+      "moduleManager": "0xdA4cc603a2C2A8877Dc2EDf898bC04d2787420eA",
+      "precompile": {
+        "p256Verifier": "0x585Bb73705A8C409eecA43E1Cea69121E126Ba7C"
+      },
+      "accountModules": {
+        "p256Validator": "0x75318c8C01104bA7D3f3C569cF392b26AE0123B0",
+        "smartBalanceKeyValidator": "0x182B5f9E9FDc2d21De9b444A97742174E6BDBDc2",
+        "simpleSessionKeyValidator": "0x59319891AEdA1Bd9786a6a62bAb96b4252118952",
+        "limitOrderSessionValidator": "0x9C56c8390E4EF6dcf2b872D1730E9B8a4b789ce0",
+        "ecdsaValidator": "0x8f69fED2806C8Fc688511c34d02379915f2884f7"
+      },
+      "accountFactories": {
+          "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
+          "smartAccountV1": "0xcCEBf21B91D20387E2cf1E14d204a827b9d0D1FF"
+      },
+      "paymasters": {
+        "enclaveVerifyingPaymaster": "0xB01d59961E629e05c4d7112D2C94C431de5805ef"
+      }
+    },
+    "130": {
+      "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+      "registry": "0xE9fD41162A64a81B42bD0B0c3Dd9c92f1667bf74",
+      "moduleManager": "0x585Bb73705A8C409eecA43E1Cea69121E126Ba7C",
+      "precompile": {
+        "p256Verifier": "0x0000000000000000000000000000000000000100"
+      },
+      "accountModules": {
+        "p256Validator": "0xdA4cc603a2C2A8877Dc2EDf898bC04d2787420eA",
+        "smartBalanceKeyValidator": "0x75318c8C01104bA7D3f3C569cF392b26AE0123B0",
+        "simpleSessionKeyValidator": "0x182B5f9E9FDc2d21De9b444A97742174E6BDBDc2",
+        "limitOrderSessionValidator": "0x59319891AEdA1Bd9786a6a62bAb96b4252118952",
+        "ecdsaValidator": "0x9C56c8390E4EF6dcf2b872D1730E9B8a4b789ce0"
+      },
+      "accountFactories": {
+        "p256SmartAccountV1": "0x651e865d163b7E15d0E7982934BBa115263D47DB",
+        "smartAccountV1": "0xcCEBf21B91D20387E2cf1E14d204a827b9d0D1FF"
+      },
+      "paymasters": {
+        "enclaveVerifyingPaymaster": "0xF12d77fBa4d3B6503Cfe9Be313718Bcae5e491eb"
+      }
+    },
     "42161": {
       "entrypoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
       "vaultFactory": "0xCe15acC5E924aee8FCEa638C3f301e6dc406bBF6",
@@ -24,7 +156,8 @@
         "smartBalanceKeyValidator": "0xF12d77fBa4d3B6503Cfe9Be313718Bcae5e491eb",
         "simpleSessionKeyValidator": "0xB01d59961E629e05c4d7112D2C94C431de5805ef",
         "ecdsaValidator": "0xCC92e53Ac34724d8DFAF99BF8754D9e014A05F88",
-        "multichainP256Validator": "0x421EC63dc2635897ccb4A51007aE7a386B36F0e1"
+        "multichainP256Validator": "0x421EC63dc2635897ccb4A51007aE7a386B36F0e1",
+        "limitOrderSessionValidator": "0xd782D5aD2945BD9AebE95206Bd41aeb2a3177e59"
       },
       "precompile": {
         "p256Verifier": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
@@ -55,7 +188,8 @@
         "smartBalanceKeyValidator": "0x23235683a76dF82A5E4f636b385De85122187d90",
         "simpleSessionKeyValidator": "0xc9C3Db1480eE9470181910BE5a55E6d52C3ab2EF",
         "ecdsaValidator": "0xe21a41Cc5DA65929d02eee29299eE74fda636aDc",
-        "multichainP256Validator": "0x8Ac2c32C48782Fd156D884031F72e4226F89B0c4"
+        "multichainP256Validator": "0x8Ac2c32C48782Fd156D884031F72e4226F89B0c4",
+        "limitOrderSessionValidator": "0xeB962BB04C07FC1f35f698555E29ae85a5c3f89F"
       },
       "precompile": {
         "p256Verifier": "0x0000000000000000000000000000000000000100"
@@ -86,7 +220,8 @@
         "smartBalanceKeyValidator": "0xeB962BB04C07FC1f35f698555E29ae85a5c3f89F",
         "simpleSessionKeyValidator": "0x23063882b2f93A549f0f00B4a1956E3c94B8eEEE",
         "ecdsaValidator": "0x296A5e7DfF48959aea296BE21aB970C578c4304f",
-        "multichainP256Validator": "0xb11BeC631Ab3ff39FFb998A465eaCeE52FD613fc"
+        "multichainP256Validator": "0xb11BeC631Ab3ff39FFb998A465eaCeE52FD613fc",
+        "limitOrderSessionValidator": "0xF0c982144Bc9d7A6F3Eb11B7b41324Dff4f688fE"
       },
       "precompile": {
         "p256Verifier": "0xc2b78104907F722DABAc4C69f826a522B2754De4"

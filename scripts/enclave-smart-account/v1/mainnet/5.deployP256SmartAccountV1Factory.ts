@@ -39,7 +39,7 @@ async function main() {
         await p256SmartAccountFactoryV1.waitForDeployment();
 
         const p256SmartAccountFactoryV1Address = await p256SmartAccountFactoryV1.getAddress();
-        console.log(`P256SmartAccountFactoryV1 deployed to: ${p256SmartAccountFactoryV1Address}`);
+        console.log(`P256SmartAccountFactoryV1 deployed to: ${p256SmartAccountFactoryV1Address} on network ${ACTIVE_SLUG}`);
 
         // Update deployment data with new address
         (deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData] as any).p256SmartAccountFactoryV1 = p256SmartAccountFactoryV1Address;

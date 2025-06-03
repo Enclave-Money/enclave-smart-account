@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import {ARB_MAIN_SLUG, OP_MAIN_SLUG, BASE_MAIN_SLUG, mainnetSlugs} from "../../../../config/networks";
+import {mainnetSlugs} from "../../../../config/networks";
 import {RPC} from "../../../../config/rpcNodes";
 import * as dotenv from 'dotenv';
 import { JsonRpcProvider } from "ethers";
@@ -42,7 +42,7 @@ async function main() {
         console.log(`SmartAccountFactoryV1 deployed to: ${accountFactoryAddress}`);
        
         // Update deployment data with new address
-        (deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData] as any).accountFactories.smartAccountFactoryV1 = accountFactoryAddress;
+        // (deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData] as any).accountFactories.smartAccountFactoryV1 = accountFactoryAddress;
         
         console.log(`Updated deployment data for network ${ACTIVE_SLUG}`);
         console.log(`Account Factory: ${(deploymentData[ACTIVE_SLUG.toString() as keyof typeof deploymentData] as any).accountFactory}`);
