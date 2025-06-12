@@ -74,9 +74,13 @@ contract LimitOrderSessionValidator is IValidator {
         returns (bytes4)
     {
         require(!isDisabled[msg.sender], "Module is disabled");
+        address signer = enclaveRegistry.getRegistryAddress(SMART_BALANCE_CONVERSION_MANAGER);
+        if (signer == ECDSA.recover(hash, sig)) {
+            return ERC1271_MAGICVALUE;
+        }
         
         bytes32 ethHash = ECDSA.toEthSignedMessageHash(hash);
-        if (enclaveRegistry.getRegistryAddress(SMART_BALANCE_CONVERSION_MANAGER) != ECDSA.recover(ethHash, sig)) {
+        if (signer != ECDSA.recover(ethHash, sig)) {
             return ERC1271_INVALID;
         }
         return ERC1271_MAGICVALUE;

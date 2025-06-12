@@ -8,5 +8,5 @@ export const RPC = {
     56: "https://bsc-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
     137: "https://polygon-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
     43114: "https://avalanche-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
-    146: "https://sonic-mainnet.core.chainstack.com/" + process.env.CHAINSTACK_API_KEY,
+    146: "https://sonic-mainnet.core.chainstack.com/" + process.env.CHAINSTACK_SONIC_API_KEY,
 } as {[key: number]: string}

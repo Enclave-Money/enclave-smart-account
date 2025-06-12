@@ -21,8 +21,13 @@ export const AVAX_MAIN_SLUG = 43114;
 export const SONIC_MAIN_SLUG = 146;
 
 export const mainnetSlugs = [
-    // BSC_MAIN_SLUG,
-    // AVAX_MAIN_SLUG,
+    ETH_MAIN_SLUG,
+    OP_MAIN_SLUG,
+    BASE_MAIN_SLUG,
+    ARB_MAIN_SLUG,
+    UNI_MAIN_SLUG,
+    BSC_MAIN_SLUG,
+    AVAX_MAIN_SLUG,
     POLYGON_MAIN_SLUG,
-    // SONIC_MAIN_SLUG
+    SONIC_MAIN_SLUG
 ]

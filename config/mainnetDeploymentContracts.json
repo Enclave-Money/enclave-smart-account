@@ -161,6 +161,9 @@
       },
       "precompile": {
         "p256Verifier": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
+      },
+      "paymasters": {
+        "enclaveVerifyingPaymaster": "0xE6467Bf0f5cB46faA45E54B3DfE83abC2A2615e1"
       }
     },
     "10": {
@@ -193,6 +196,9 @@
       },
       "precompile": {
         "p256Verifier": "0x0000000000000000000000000000000000000100"
+      },
+      "paymasters": {
+        "enclaveVerifyingPaymaster": "0xd3C02681577e7f87f091736eF1817328ed980B42"
       }
     },
     "8453": {
@@ -225,6 +231,9 @@
       },
       "precompile": {
         "p256Verifier": "0xc2b78104907F722DABAc4C69f826a522B2754De4"
+      },
+      "paymasters": {
+        "enclaveVerifyingPaymaster": "0x959DF35a4bDc25BA125615dfC84621D038A95FA8"
       }
     }
   }
